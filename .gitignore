@@ -36,6 +36,13 @@ yarn-error.log*
 # vercel
 .vercel
 
+# mcp (contient un token secret Supabase — ne jamais committer)
+.mcp.json
+
+# fichiers personnels sensibles — NE JAMAIS committer
+Mes mots de passe.docx
+*.docx
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
