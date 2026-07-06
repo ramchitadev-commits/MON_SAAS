@@ -10,6 +10,20 @@ const isClient = () => typeof window !== 'undefined';
 
 const getStorageKey = (slug: string) => `doole_cart_${slug}`;
 
+// Longueur max tolérée pour une URL d'image dans le panier.
+// Une vraie URL (Supabase Storage, CDN...) fait < 500 caractères ;
+// une image Base64 en fait des dizaines de milliers.
+const MAX_IMAGE_URL_LENGTH = 500;
+
+// Le panier ne doit JAMAIS contenir de Base64 (data:...) : ça remplit
+// instantanément le quota de 5 Mo du localStorage. On ne garde qu'une URL légère.
+const sanitizeImage = (image: string): string => {
+  if (!image) return '';
+  if (image.startsWith('data:')) return ''; // image lourde encodée en Base64 → rejetée
+  if (image.length > MAX_IMAGE_URL_LENGTH) return ''; // URL anormalement longue → rejetée
+  return image;
+};
+
 // Récupérer le panier pour une boutique spécifique
 export const getCart = (slug: string): CartItem[] => {
   if (!isClient()) return [];
@@ -17,10 +31,20 @@ export const getCart = (slug: string): CartItem[] => {
   return stored ? JSON.parse(stored) : [];
 };
 
-// Sauvegarder le panier pour une boutique spécifique
+// Sauvegarder le panier — en cas de quota dépassé on retire les images
+// plutôt que de faire planter l'application.
 export const saveCart = (slug: string, items: CartItem[]): void => {
   if (!isClient()) return;
-  localStorage.setItem(getStorageKey(slug), JSON.stringify(items));
+  try {
+    localStorage.setItem(getStorageKey(slug), JSON.stringify(items));
+  } catch {
+    const stripped = items.map((item) => ({ ...item, image: '' }));
+    try {
+      localStorage.setItem(getStorageKey(slug), JSON.stringify(stripped));
+    } catch {
+      // localStorage saturé même sans images : on abandonne silencieusement
+    }
+  }
 };
 
 // Ajouter un produit au panier
@@ -34,11 +58,12 @@ export const addToCart = (
 ): CartItem[] => {
   const items = getCart(slug);
   const existingIndex = items.findIndex((item) => item.productId === productId);
+  const safeImage = sanitizeImage(image);
 
   if (existingIndex >= 0) {
     items[existingIndex].quantity += quantity;
   } else {
-    items.push({ productId, name, price, image, quantity });
+    items.push({ productId, name, price, image: safeImage, quantity });
   }
 
   saveCart(slug, items);
