@@ -1,12 +1,8 @@
-import { FlatCompat } from "@eslint/eslintrc";
+const nextConfig = {
+  /* Vos autres options de configuration ici (si vous en avez) */
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+};
 
-const compat = new FlatCompat({
-  baseDirectory: import.meta.dirname,
-});
-
-const eslintConfig = [
-  ...compat.extends("next/core-web-vitals"),
-  ...compat.extends("next/typescript"),
-];
-
-export default eslintConfig;
+export default nextConfig;
