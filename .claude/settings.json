@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(git add src/app/\\(seller\\)/onboarding/page.tsx; git commit -m \"fix: wrap finalize\\(\\) in try/catch so Terminer button always navigates to step 4\"; git push)",
+      "PowerShell(git add \"src/app/\\(seller\\)/onboarding/page.tsx\")",
+      "PowerShell(git commit -m \"fix: wrap finalize\\(\\) in try/catch so Terminer button always navigates to step 4\")"
+    ]
+  }
+}

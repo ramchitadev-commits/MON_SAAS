@@ -15,6 +15,8 @@ export default function BoutiqueSettingsPage() {
   const [deliveryFee, setDeliveryFee] = useState(1500);
   const [success, setSuccess] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -109,9 +111,8 @@ export default function BoutiqueSettingsPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Fatou Collection"
-              className={`w-full h-12 px-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                errors.name ? 'border-rose-500' : ''
-              }`}
+              className={`w-full h-12 px-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${errors.name ? 'border-rose-500' : ''
+                }`}
             />
             {errors.name && <p className="text-xs font-bold text-rose-500 mt-1">{errors.name}</p>}
           </div>
@@ -127,9 +128,8 @@ export default function BoutiqueSettingsPage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex: Robes Wax de haute qualité importées de Turquie..."
               rows={4}
-              className={`w-full p-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none ${
-                errors.description ? 'border-rose-500' : ''
-              }`}
+              className={`w-full p-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all resize-none ${errors.description ? 'border-rose-500' : ''
+                }`}
             />
             {errors.description && <p className="text-xs font-bold text-rose-500 mt-1">{errors.description}</p>}
           </div>
@@ -154,22 +154,20 @@ export default function BoutiqueSettingsPage() {
               <button
                 type="button"
                 onClick={() => setPayoutProvider('wave')}
-                className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  payoutProvider === 'wave'
+                className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${payoutProvider === 'wave'
                     ? 'border-blue-600 bg-blue-50 text-blue-800'
                     : 'border-slate-900 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 Wave
               </button>
               <button
                 type="button"
                 onClick={() => setPayoutProvider('orange_money')}
-                className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${
-                  payoutProvider === 'orange_money'
+                className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 ${payoutProvider === 'orange_money'
                     ? 'border-orange-600 bg-orange-50 text-orange-800'
                     : 'border-slate-900 hover:bg-slate-50'
-                }`}
+                  }`}
               >
                 Orange Money
               </button>
@@ -191,9 +189,8 @@ export default function BoutiqueSettingsPage() {
                 value={payoutPhone}
                 onChange={(e) => setPayoutPhone(e.target.value)}
                 placeholder="77 123 45 67"
-                className={`w-full h-12 pl-[85px] pr-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                  errors.phone ? 'border-rose-500' : ''
-                }`}
+                className={`w-full h-12 pl-[85px] pr-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${errors.phone ? 'border-rose-500' : ''
+                  }`}
               />
             </div>
             {errors.phone && <p className="text-xs font-bold text-rose-500 mt-1">{errors.phone}</p>}

@@ -9,6 +9,7 @@ export interface ShopSettings {
   payoutPhone: string;
   payoutProvider: 'wave' | 'orange_money';
   deliveryFee: number;
+  logo?: File | string | null; // <-- Ajouté ici
 }
 
 // Valeurs de repli si aucune ligne n'existe encore en base.
@@ -19,6 +20,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   payoutPhone: '77 123 45 67',
   payoutProvider: 'wave',
   deliveryFee: 1500,
+  logo: null,
 };
 
 // --- Validation Zod (règle AGENTS.md) ---
@@ -28,6 +30,7 @@ export const shopSettingsSchema = z.object({
   payoutPhone: z.string().trim().min(1, 'Le numéro de réception est obligatoire.'),
   payoutProvider: z.enum(['wave', 'orange_money']),
   deliveryFee: z.number().int().min(0),
+  logo: z.any().optional(), // <-- Permet de valider même s'il y a un logo ou pas
 });
 
 // On ne renvoie que les champs métier (pas l'id/createdAt techniques).
@@ -38,6 +41,7 @@ function toSettings(row: Record<string, unknown>): ShopSettings {
     payoutPhone: row.payoutPhone as string,
     payoutProvider: row.payoutProvider as 'wave' | 'orange_money',
     deliveryFee: row.deliveryFee as number,
+    logo: (row.logo as string) || null, // <-- Ajouté ici
   };
 }
 
