@@ -120,12 +120,15 @@ export default function OnboardingPage() {
       }
       setStep(3);
     } else if (step === 3) {
-      // Le produit est facultatif : si renseigné partiellement, on vérifie le prix.
       if (productName.trim() && (!productPrice || parseInt(productPrice) < 0)) {
         setError('Entrez un prix valide pour ce produit, ou laissez le nom vide pour passer.');
         return;
       }
-      await finalize();
+      try {
+        await finalize();
+      } catch (err) {
+        console.error('Finalisation échouée :', err);
+      }
       setStep(4);
     }
   };
@@ -134,7 +137,11 @@ export default function OnboardingPage() {
     setProductName('');
     setProductPrice('');
     setProductImage(null);
-    await finalize();
+    try {
+      await finalize();
+    } catch (err) {
+      console.error('Finalisation échouée :', err);
+    }
     setStep(4);
   };
 
