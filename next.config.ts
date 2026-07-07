@@ -1,8 +1,5 @@
-const nextConfig = {
-  /* Vos autres options de configuration ici (si vous en avez) */
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-};
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {};
 
 export default nextConfig;
