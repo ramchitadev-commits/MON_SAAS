@@ -258,21 +258,33 @@ export default function AccueilPage() {
           <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
             Mettez votre lien Doolé dans la biographie de vos profils sociaux. Vos clients pourront commander et payer directement par Wave/OM sans passer 20 minutes à échanger des messages.
           </p>
-          <div className="mt-4 flex items-center bg-slate-800 border border-slate-700 rounded-xl p-2.5 gap-2">
-            <span className="text-xs text-slate-300 font-mono select-all truncate flex-1 pl-2">
-              {shopUrl}
-            </span>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(shopUrl);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-              className="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors cursor-pointer text-slate-200"
-              title="Copier le lien"
-            >
-              {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
-            </button>
+          <div className="mt-4 space-y-2">
+            <div className="flex items-center bg-slate-800 border border-slate-700 rounded-xl p-2.5 gap-2">
+              <span className="text-xs text-slate-300 font-mono select-all truncate flex-1 pl-2">
+                {shopUrl}
+              </span>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(shopUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                }}
+                className="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-lg transition-colors cursor-pointer text-slate-200"
+                title="Copier le lien"
+              >
+                {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+              </button>
+            </div>
+            <div className="flex gap-2">
+              <a
+                href={shopUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-2 h-10 text-xs font-bold text-slate-900 bg-white rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                Voir le magasin public
+              </a>
+            </div>
           </div>
         </div>
       </div>
