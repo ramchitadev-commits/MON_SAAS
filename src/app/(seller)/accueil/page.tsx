@@ -2,40 +2,90 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { 
-  TrendingUp, 
-  ShoppingBag, 
-  Share2, 
-  PlusCircle, 
-  ArrowRight, 
-  ClipboardList, 
-  Users, 
-  Copy, 
+import {
+  TrendingUp,
+  ShoppingBag,
+  Share2,
+  PlusCircle,
+  ArrowRight,
+  ClipboardList,
+  Users,
+  Copy,
   Check,
   Sparkles,
-  Truck
+  Truck,
+  ChevronDown,
 } from 'lucide-react';
 import { getShopSettings, ShopSettings } from '@/lib/settings';
 import { getOrders } from '@/lib/orders';
 import { Order } from '@/types';
 
+type PeriodFilter = 'today' | 'month' | 'quarter' | 'year';
+
+interface PeriodConfig {
+  label: string;
+  labelCard: string;
+  getStartDate: () => Date;
+}
+
 export default function AccueilPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [copied, setCopied] = useState(false);
-  // Évite le mismatch d'hydratation : on attend le montage avant de lire
-  // les données client (localStorage, window.location).
   const [mounted, setMounted] = useState(false);
+  const [period, setPeriod] = useState<PeriodFilter>('today');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const periodConfigs: Record<PeriodFilter, PeriodConfig> = {
+    today: {
+      label: 'Aujourd\'hui',
+      labelCard: 'du Jour',
+      getStartDate: () => {
+        const d = new Date();
+        d.setHours(0, 0, 0, 0);
+        return d;
+      },
+    },
+    month: {
+      label: 'Ce mois-ci',
+      labelCard: 'du Mois',
+      getStartDate: () => {
+        const d = new Date();
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      },
+    },
+    quarter: {
+      label: '3 derniers mois',
+      labelCard: 'des 3 Derniers Mois',
+      getStartDate: () => {
+        const d = new Date();
+        d.setDate(d.getDate() - 90);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      },
+    },
+    year: {
+      label: 'Cette année',
+      labelCard: 'de l\'Année',
+      getStartDate: () => {
+        const d = new Date();
+        d.setMonth(0);
+        d.setDate(1);
+        d.setHours(0, 0, 0, 0);
+        return d;
+      },
+    },
+  };
 
   useEffect(() => {
     setMounted(true);
-    // Charge les commandes et les paramètres depuis Supabase
     const loadOrders = () => getOrders().then(setOrders).catch((err) => console.error(err));
     const loadSettings = () => getShopSettings().then(setSettings).catch((err) => console.error(err));
     loadOrders();
     loadSettings();
 
-    // Rafraîchit régulièrement
     const interval = setInterval(() => {
       loadOrders();
       loadSettings();
@@ -43,21 +93,23 @@ export default function AccueilPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Calcul du CA du jour (commandes payée ou livrée créées aujourd'hui)
-  const calculateDailyRevenue = () => {
-    const today = new Date().toDateString();
+  // Calcule le CA selon la période sélectionnée
+  const calculateFilteredRevenue = () => {
+    const config = periodConfigs[period];
+    const startDate = config.getStartDate();
+
     return orders
-      .filter(o => {
-        const orderDate = new Date(o.createdAt).toDateString();
+      .filter((o) => {
+        const orderDate = new Date(o.createdAt);
         const isValidStatus = o.status === 'payee' || o.status === 'livre' || o.status === 'en_route';
-        return orderDate === today && isValidStatus;
+        return orderDate >= startDate && isValidStatus;
       })
       .reduce((sum, o) => sum + o.total, 0);
   };
 
   // Commandes à traiter (statut payee ou en_attente)
   const ordersToProcess = orders.filter(
-    o => o.status === 'payee' || o.status === 'en_attente'
+    (o) => o.status === 'payee' || o.status === 'en_attente'
   );
 
   const formatPrice = (amount: number) => {
@@ -66,8 +118,6 @@ export default function AccueilPage() {
 
   // Slug dynamique pour la boutique
   const shopSlug = settings ? settings.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'boutique';
-  // Tant que le composant n'est pas monté, on rend la même valeur que le serveur
-  // (`doole.sn`) pour garantir un premier rendu client identique au HTML serveur.
   const shopUrl =
     mounted && typeof window !== 'undefined'
       ? `${window.location.origin}/${shopSlug}`
@@ -85,7 +135,6 @@ export default function AccueilPage() {
         console.error('Erreur lors du partage:', err);
       }
     } else {
-      // Fallback : copie dans le presse-papier
       navigator.clipboard.writeText(shopUrl);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -115,21 +164,62 @@ export default function AccueilPage() {
 
       {/* Grid Cartes Principales */}
       <div className="grid gap-4 sm:grid-cols-2">
-        {/* CA du Jour */}
-        <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
-          <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
-            <TrendingUp className="h-40 w-40" />
+        {/* CA avec filtres */}
+        <div className="space-y-3">
+          {/* Select de filtre temporel */}
+          <div className="relative">
+            <button
+              onClick={() => setIsFilterOpen(!isFilterOpen)}
+              className="w-full h-11 px-4 bg-white border-2 border-slate-900 rounded-xl font-bold text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[1px] active:translate-y-[1px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-between text-slate-900 cursor-pointer"
+            >
+              <span>{periodConfigs[period].label}</span>
+              <ChevronDown
+                className={`h-4 w-4 text-slate-400 transition-transform ${
+                  isFilterOpen ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+
+            {isFilterOpen && (
+              <div className="absolute top-12 left-0 right-0 bg-white border-2 border-slate-900 rounded-xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] z-10 overflow-hidden">
+                {(Object.entries(periodConfigs) as Array<[PeriodFilter, PeriodConfig]>).map(
+                  ([key, config]) => (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setPeriod(key);
+                        setIsFilterOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-3 font-bold text-sm transition-all ${
+                        period === key
+                          ? 'bg-emerald-50 text-emerald-900 border-l-4 border-l-emerald-600 pl-3'
+                          : 'text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      {config.label}
+                    </button>
+                  )
+                )}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider">
-            <TrendingUp className="h-4 w-4" />
-            Chiffre d'Affaires du Jour
+
+          {/* Carte CA */}
+          <div className="bg-gradient-to-br from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden">
+            <div className="absolute right-0 bottom-0 opacity-10 translate-x-4 translate-y-4">
+              <TrendingUp className="h-40 w-40" />
+            </div>
+            <div className="flex items-center gap-2 text-emerald-100 text-xs font-bold uppercase tracking-wider">
+              <TrendingUp className="h-4 w-4" />
+              Chiffre d'Affaires {periodConfigs[period].labelCard}
+            </div>
+            <div className="text-3xl font-black mt-3 md:text-4xl">
+              {formatPrice(calculateFilteredRevenue())}
+            </div>
+            <p className="text-xs text-emerald-100/80 mt-2">
+              Ventes encaissées et expédiées.
+            </p>
           </div>
-          <div className="text-3xl font-black mt-3 md:text-4xl">
-            {formatPrice(calculateDailyRevenue())}
-          </div>
-          <p className="text-xs text-emerald-100/80 mt-2">
-            Ventes encaissées et expédiées aujourd'hui.
-          </p>
         </div>
 
         {/* Commandes à traiter */}

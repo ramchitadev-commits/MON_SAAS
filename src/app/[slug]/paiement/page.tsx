@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CreditCard, ShieldCheck } from 'lucide-react';
 import { getCart, getCartTotal, clearCart, CartItem } from '@/lib/cart';
-import { createOrder } from '@/lib/orders';
+import { createOrderWithAutoDispatch } from '@/lib/actions';
 import { WaveLogo, OrangeMoneyLogo } from '@/components/logos';
 
 interface DeliveryInfo {
@@ -73,7 +73,8 @@ export default function PaymentPage() {
         }));
 
         // Crée la commande + ses articles dans Supabase (l'id est généré par la base)
-        const created = await createOrder({
+        // Auto-dispatch à un livreur disponible si possible
+        const created = await createOrderWithAutoDispatch({
           customerName: deliveryInfo.name,
           customerPhone: `+221 ${deliveryInfo.phone}`,
           deliveryZone: deliveryInfo.zone,

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { supabase } from './supabase';
-import { Order, OrderStatus } from '@/types';
+import { Order, OrderStatus, Courier } from '@/types';
 
 const ORDERS = 'orders';
 const ITEMS = 'order_items';
@@ -128,4 +128,30 @@ export async function updateOrder(order: Order): Promise<Order> {
 
   if (error) throw new Error(`Mise à jour de la commande échouée : ${error.message}`);
   return data as unknown as Order;
+}
+
+// --- Dispatch automatique : attribue une commande au premier livreur disponible ---
+export async function autoDispatchOrder(orderId: string, couriers: Courier[]): Promise<Order | null> {
+  if (couriers.length === 0) return null;
+
+  // Charge la commande existante
+  const order = await getOrderById(orderId);
+  if (!order) return null;
+
+  // Sélectionne le premier livreur (dispatch équitable)
+  const assignedCourier = couriers[0];
+
+  const updatedOrder: Order = {
+    ...order,
+    status: 'en_route',
+    courierId: assignedCourier.id,
+    dispatchedAt: new Date().toISOString(),
+  };
+
+  try {
+    return await updateOrder(updatedOrder);
+  } catch (err) {
+    console.error(`Auto-dispatch échoué pour la commande ${orderId}:`, err);
+    return null;
+  }
 }
