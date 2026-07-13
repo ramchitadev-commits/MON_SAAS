@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, MapPin, Phone, User, FileText } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone, User, FileText, CheckCircle } from 'lucide-react';
 import { getCart, getCartTotal, CartItem } from '@/lib/cart';
+import { getShopSettings } from '@/lib/settings';
 
 interface Zone {
   name: string;
@@ -35,7 +36,11 @@ export default function DeliveryPage() {
   const [selectedZone, setSelectedZone] = useState('');
   const [address, setAddress] = useState('');
   const [note, setNote] = useState('');
+  const [gpsLocation, setGpsLocation] = useState<string | null>(null);
+  const [gpsStatus, setGpsStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  const [cutoffWarning, setCutoffWarning] = useState<string | null>(null);
+  const [deliveryDate, setDeliveryDate] = useState<string | null>(null);
 
   useEffect(() => {
     const items = getCart(slug);
@@ -54,14 +59,71 @@ export default function DeliveryPage() {
       setSelectedZone(data.zone || '');
       setAddress(data.address || '');
       setNote(data.note || '');
+      setGpsLocation(data.gpsLocation || null);
+      setDeliveryDate(data.deliveryDate || null);
     }
+
+    // Vérifier le cutoff time
+    checkCutoffTime();
   }, [slug, router]);
+
+  const checkCutoffTime = async () => {
+    try {
+      const settings = await getShopSettings();
+      const cutoffTime = settings.cutoffTime || '18:00';
+      const now = new Date();
+      const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+      if (currentTime >= cutoffTime) {
+        // Dépasse le cutoff, livraison demain
+        const tomorrow = new Date(now);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        setDeliveryDate(tomorrowStr);
+        setCutoffWarning(
+          `⚠️ Il est plus de ${cutoffTime}, votre commande sera traitée et livrée demain (${formatDateFr(tomorrowStr)}).`
+        );
+      } else {
+        // Avant le cutoff, livraison aujourd'hui
+        const todayStr = now.toISOString().split('T')[0];
+        setDeliveryDate(todayStr);
+        setCutoffWarning(null);
+      }
+    } catch (err) {
+      console.error('Erreur lors de la vérification du cutoff time:', err);
+    }
+  };
+
+  const formatDateFr = (dateStr: string) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    return date.toLocaleDateString('fr-FR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  };
+
+  const handleGpsClick = () => {
+    if ('geolocation' in navigator) {
+      setGpsStatus('loading');
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const gpsUrl = `https://www.google.com/maps?q=${latitude},${longitude}`;
+          setGpsLocation(gpsUrl);
+          setGpsStatus('success');
+        },
+        (error) => {
+          console.error('Erreur GPS:', error);
+          setGpsStatus('error');
+          alert('Impossible d\'accéder à votre position. Vérifiez vos permissions de localisation.');
+        }
+      );
+    } else {
+      alert('La localisation n\'est pas supportée par votre navigateur.');
+    }
+  };
 
   const validate = () => {
     const newErrors: { [key: string]: string } = {};
     if (!name.trim()) newErrors.name = 'Le nom est obligatoire';
-    
-    // Validation du numéro de téléphone sénégalais simple (70, 75, 76, 77, 78, 33...)
+
     const phoneTrimmed = phone.replace(/[\s+]/g, '');
     if (!phone.trim()) {
       newErrors.phone = 'Le numéro de téléphone est obligatoire';
@@ -83,7 +145,16 @@ export default function DeliveryPage() {
     const zoneInfo = DAKAR_ZONES.find((z) => z.name === selectedZone);
     const fee = zoneInfo ? zoneInfo.fee : 0;
 
-    const deliveryInfo = { name, phone, zone: selectedZone, fee, address, note };
+    const deliveryInfo = {
+      name,
+      phone,
+      zone: selectedZone,
+      fee,
+      address,
+      note,
+      gpsLocation: gpsLocation || undefined,
+      deliveryDate: deliveryDate || undefined,
+    };
     sessionStorage.setItem(`doole_delivery_${slug}`, JSON.stringify(deliveryInfo));
 
     router.push(`/${slug}/paiement`);
@@ -119,6 +190,13 @@ export default function DeliveryPage() {
       {/* Formulaire */}
       <main className="max-w-xl mx-auto px-4 py-6">
         <form onSubmit={handleNext} className="space-y-6">
+          {/* Alerte cutoff time */}
+          {cutoffWarning && (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 text-sm font-semibold text-amber-900">
+              {cutoffWarning}
+            </div>
+          )}
+
           {/* Fiche coordonnées style flat */}
           <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-4">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -164,6 +242,44 @@ export default function DeliveryPage() {
                 />
               </div>
               {errors.phone && <p className="text-xs font-bold text-rose-500 mt-1">{errors.phone}</p>}
+            </div>
+
+            {/* Bouton GPS */}
+            <div className="space-y-1.5 pt-2">
+              <button
+                type="button"
+                onClick={handleGpsClick}
+                disabled={gpsStatus === 'loading' || gpsStatus === 'success'}
+                className={`w-full h-12 px-4 border-2 border-slate-900 rounded-xl font-bold text-sm shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] transition-all flex items-center justify-center gap-2 ${
+                  gpsStatus === 'success'
+                    ? 'bg-emerald-50 text-emerald-900 border-emerald-900 cursor-not-allowed'
+                    : gpsStatus === 'loading'
+                      ? 'bg-slate-100 text-slate-700 cursor-wait'
+                      : 'bg-white text-slate-900 hover:bg-slate-50 cursor-pointer active:translate-x-[2px] active:translate-y-[2px] active:shadow-[1px_1px_0px_0px_rgba(0,0,0,1)]'
+                }`}
+              >
+                {gpsStatus === 'loading' && (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current"></div>
+                    Localisation en cours...
+                  </>
+                )}
+                {gpsStatus === 'success' && (
+                  <>
+                    <CheckCircle className="h-5 w-5" />
+                    Position enregistrée avec succès ! ✅
+                  </>
+                )}
+                {(gpsStatus === 'idle' || gpsStatus === 'error') && (
+                  <>
+                    <MapPin className="h-5 w-5" />
+                    Partager ma position GPS actuelle
+                  </>
+                )}
+              </button>
+              {gpsStatus === 'error' && (
+                <p className="text-xs font-bold text-rose-500 text-center">Erreur d'accès à la localisation</p>
+              )}
             </div>
           </div>
 

@@ -21,6 +21,8 @@ export const orderInputSchema = z.object({
   deliveryZone: z.string().trim().min(1, 'La zone de livraison est obligatoire.'),
   deliveryAddress: z.string().trim().min(1, "L'adresse de livraison est obligatoire."),
   deliveryNote: z.string().nullable().optional(),
+  gpsLocation: z.string().nullable().optional(),
+  deliveryDate: z.string().nullable().optional(),
   subtotal: z.number().int().min(0),
   deliveryFee: z.number().int().min(0),
   total: z.number().int().min(0),

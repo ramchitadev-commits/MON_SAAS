@@ -38,6 +38,8 @@ export interface Order {
   deliveryZone: string;
   deliveryAddress: string;
   deliveryNote?: string;
+  gpsLocation?: string | null;
+  deliveryDate?: string | null;
   subtotal: number;
   deliveryFee: number;
   total: number;

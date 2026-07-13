@@ -15,6 +15,8 @@ interface DeliveryInfo {
   fee: number;
   address: string;
   note: string;
+  gpsLocation?: string;
+  deliveryDate?: string;
 }
 
 export default function PaymentPage() {
@@ -77,6 +79,8 @@ export default function PaymentPage() {
           deliveryZone: deliveryInfo.zone,
           deliveryAddress: deliveryInfo.address,
           deliveryNote: deliveryInfo.note || null,
+          gpsLocation: deliveryInfo.gpsLocation || null,
+          deliveryDate: deliveryInfo.deliveryDate || null,
           subtotal,
           deliveryFee,
           total,
