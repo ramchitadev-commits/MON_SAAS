@@ -51,6 +51,7 @@ export default function OnboardingPage() {
 
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const slug = slugify(shopName);
   const shopUrl = `doole.sn/${slug}`;
@@ -124,12 +125,15 @@ export default function OnboardingPage() {
         setError('Entrez un prix valide pour ce produit, ou laissez le nom vide pour passer.');
         return;
       }
+      setIsLoading(true);
       try {
         await finalize();
+        setStep(4);
       } catch (err) {
         console.error('Finalisation échouée :', err);
+        setError('Erreur lors de la finalisation. Réessayez.');
+        setIsLoading(false);
       }
-      setStep(4);
     }
   };
 
@@ -137,12 +141,15 @@ export default function OnboardingPage() {
     setProductName('');
     setProductPrice('');
     setProductImage(null);
+    setIsLoading(true);
     try {
       await finalize();
+      setStep(4);
     } catch (err) {
       console.error('Finalisation échouée :', err);
+      setError('Erreur lors de la finalisation. Réessayez.');
+      setIsLoading(false);
     }
-    setStep(4);
   };
 
   const goBack = () => {
@@ -450,13 +457,14 @@ export default function OnboardingPage() {
           <div className="mt-auto pt-8 space-y-3">
             <button
               onClick={goNext}
-              className="h-14 w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer flex items-center justify-center gap-2"
+              disabled={isLoading}
+              className="h-14 w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {step === 3 ? 'Terminer' : 'Continuer'}
-              <ArrowRight className="h-4 w-4" />
+              {isLoading ? 'Traitement...' : step === 3 ? 'Terminer' : 'Continuer'}
+              {!isLoading && <ArrowRight className="h-4 w-4" />}
             </button>
 
-            {step === 3 && (
+            {step === 3 && !isLoading && (
               <button
                 onClick={skipProduct}
                 className="h-12 w-full text-slate-500 hover:text-slate-700 font-bold text-sm rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"

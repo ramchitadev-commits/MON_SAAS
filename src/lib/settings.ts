@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { supabase } from './supabase';
 
 const TABLE = 'shop_settings';
+const BUCKET = 'shop-logos';
 
 export interface ShopSettings {
   name: string;
@@ -9,7 +10,8 @@ export interface ShopSettings {
   payoutPhone: string;
   payoutProvider: 'wave' | 'orange_money';
   deliveryFee: number;
-  logo?: File | string | null; // <-- Ajouté ici
+  logo?: string | null;
+  cutoffTime?: string | null; // HH:MM format, ex: "16:30"
 }
 
 // Valeurs de repli si aucune ligne n'existe encore en base.
@@ -21,6 +23,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   payoutProvider: 'wave',
   deliveryFee: 1500,
   logo: null,
+  cutoffTime: '18:00',
 };
 
 // --- Validation Zod (règle AGENTS.md) ---
@@ -30,7 +33,8 @@ export const shopSettingsSchema = z.object({
   payoutPhone: z.string().trim().min(1, 'Le numéro de réception est obligatoire.'),
   payoutProvider: z.enum(['wave', 'orange_money']),
   deliveryFee: z.number().int().min(0),
-  logo: z.any().optional(), // <-- Permet de valider même s'il y a un logo ou pas
+  logo: z.string().nullable().optional(),
+  cutoffTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format invalide').nullable().optional(),
 });
 
 // On ne renvoie que les champs métier (pas l'id/createdAt techniques).
@@ -41,7 +45,8 @@ function toSettings(row: Record<string, unknown>): ShopSettings {
     payoutPhone: row.payoutPhone as string,
     payoutProvider: row.payoutProvider as 'wave' | 'orange_money',
     deliveryFee: row.deliveryFee as number,
-    logo: (row.logo as string) || null, // <-- Ajouté ici
+    logo: (row.logo as string) || null,
+    cutoffTime: (row.cutoffTime as string) || '18:00',
   };
 }
 
@@ -55,6 +60,25 @@ export async function getShopSettings(): Promise<ShopSettings> {
 
   if (error) throw new Error(`Chargement des paramètres impossible : ${error.message}`);
   return data ? toSettings(data) : DEFAULT_SETTINGS;
+}
+
+// Upload un logo dans Supabase Storage et retourne l'URL publique.
+export async function uploadLogo(file: File): Promise<string> {
+  const timestamp = Date.now();
+  const ext = file.name.split('.').pop() || 'jpg';
+  const path = `logo-${timestamp}.${ext}`;
+
+  const { data, error } = await supabase.storage
+    .from(BUCKET)
+    .upload(path, file, { upsert: true });
+
+  if (error) throw new Error(`Upload du logo échoué : ${error.message}`);
+
+  const { data: publicUrl } = supabase.storage
+    .from(BUCKET)
+    .getPublicUrl(data.path);
+
+  return publicUrl.publicUrl;
 }
 
 // Table mono-ligne pour le prototype : on met à jour la ligne existante, sinon on la crée.

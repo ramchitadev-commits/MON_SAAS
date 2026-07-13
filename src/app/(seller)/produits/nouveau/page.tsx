@@ -2,7 +2,7 @@
 
 import React, { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Camera, X, Upload } from 'lucide-react';
+import { ArrowLeft, Camera, X, Upload, Check } from 'lucide-react';
 import { createProduct } from '@/lib/products';
 
 export default function NouveauProduitPage() {
@@ -17,6 +17,8 @@ export default function NouveauProduitPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageName, setImageName] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [successMessage, setSuccessMessage] = useState(false);
 
   const handleFileChange = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -74,6 +76,7 @@ export default function NouveauProduitPage() {
       return;
     }
 
+    setIsLoading(true);
     try {
       await createProduct({
         name,
@@ -83,15 +86,29 @@ export default function NouveauProduitPage() {
         isAvailable: true,
         stock: isStockUnlimited ? null : parseInt(stock) || 0,
       });
-      router.push('/produits');
+      setSuccessMessage(true);
+      setTimeout(() => {
+        router.push('/produits');
+      }, 800);
     } catch (err) {
       console.error(err);
       alert('Création impossible. Vérifiez votre connexion et réessayez.');
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="space-y-6">
+      {/* Toast de succès */}
+      {successMessage && (
+        <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
+          <div className="bg-emerald-100 border-2 border-emerald-500 text-emerald-950 p-5 rounded-2xl flex items-center gap-3 font-bold text-base shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] animate-bounce pointer-events-auto">
+            <Check className="h-6 w-6 text-emerald-600" />
+            Produit enregistré avec succès !
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center gap-4">
         <button
@@ -298,9 +315,10 @@ export default function NouveauProduitPage() {
           {/* Action validation */}
           <button
             type="submit"
-            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer"
+            disabled={isLoading}
+            className="w-full h-12 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed"
           >
-            Créer et Publier le Produit
+            {isLoading ? 'Enregistrement...' : 'Créer et Publier le Produit'}
           </button>
         </div>
       </form>

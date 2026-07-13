@@ -4,6 +4,7 @@ export type CourierChannel = 'sms' | 'whatsapp';
 
 export interface Product {
   id: string;
+  shopId?: string;
   name: string;
   description: string;
   price: number;

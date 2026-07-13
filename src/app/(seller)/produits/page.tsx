@@ -9,10 +9,25 @@ import { Product } from '@/types';
 export default function ProduitsPage() {
   const [products, setProducts] = useState<Product[]>([]);
 
+  const loadProducts = async () => {
+    try {
+      const data = await getProducts();
+      setProducts(data);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
-    getProducts()
-      .then(setProducts)
-      .catch((err) => console.error(err));
+    loadProducts();
+    // Recharge les produits chaque fois que la page devient visible (après onboarding)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadProducts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, []);
 
   const formatPrice = (amount: number) => {

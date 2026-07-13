@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { supabase } from './supabase';
 import { Product } from '@/types';
+import { getActiveShopId } from './shop';
 
 const TABLE = 'products';
 
@@ -19,13 +20,20 @@ export type ProductInput = z.infer<typeof productInputSchema>;
 
 // --- Lecture ---
 export async function getProducts(): Promise<Product[]> {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .order('createdAt', { ascending: false });
+  try {
+    const shopId = await getActiveShopId();
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('shopId', shopId)
+      .order('createdAt', { ascending: false });
 
-  if (error) throw new Error(`Chargement des produits impossible : ${error.message}`);
-  return (data ?? []) as Product[];
+    if (error) throw new Error(`Chargement des produits impossible : ${error.message}`);
+    return (data ?? []) as Product[];
+  } catch (err) {
+    console.error('Erreur getProducts:', err);
+    return [];
+  }
 }
 
 export async function getProductById(id: string): Promise<Product | null> {
@@ -42,10 +50,11 @@ export async function getProductById(id: string): Promise<Product | null> {
 // --- Création (nouveau produit : Supabase génère l'id et createdAt) ---
 export async function createProduct(input: ProductInput): Promise<Product> {
   const parsed = productInputSchema.parse(input);
+  const shopId = await getActiveShopId();
 
   const { data, error } = await supabase
     .from(TABLE)
-    .insert(parsed)
+    .insert({ ...parsed, shopId })
     .select()
     .single();
 
