@@ -99,9 +99,10 @@ export default function PaymentPage() {
         // Redirige vers la confirmation
         router.push(`/${slug}/confirmation/${created.id}`);
       } catch (err) {
-        console.error(err);
+        console.error('Erreur de paiement:', err);
         setProcessing(false);
-        alert("Le paiement n'a pas pu être enregistré. Vérifiez votre connexion et réessayez.");
+        const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+        alert(`Le paiement n'a pas pu être enregistré.\n\nDétails: ${errorMessage}`);
       }
     }, 2000);
   };

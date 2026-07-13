@@ -85,9 +85,14 @@ export async function createOrder(input: OrderInput): Promise<Order> {
   const parsed = orderInputSchema.parse(input);
   const { items, ...orderFields } = parsed;
 
+  // Filtre les champs null/undefined pour éviter les erreurs Supabase
+  const fieldsToInsert = Object.fromEntries(
+    Object.entries(orderFields).filter(([, value]) => value !== null && value !== undefined)
+  );
+
   const { data: orderRow, error: orderError } = await supabase
     .from(ORDERS)
-    .insert(orderFields)
+    .insert(fieldsToInsert)
     .select()
     .single();
   if (orderError) throw new Error(`Création de la commande échouée : ${orderError.message}`);
@@ -119,15 +124,17 @@ export async function updateOrder(order: Order): Promise<Order> {
     paidAt: order.paidAt ?? null,
   };
 
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from(ORDERS)
     .update(patch)
-    .eq('id', order.id)
-    .select(SELECT_WITH_ITEMS)
-    .single();
+    .eq('id', order.id);
 
   if (error) throw new Error(`Mise à jour de la commande échouée : ${error.message}`);
-  return data as unknown as Order;
+
+  // Recharge la commande complète avec ses items
+  const updated = await getOrderById(order.id);
+  if (!updated) throw new Error('Commande mise à jour mais introuvable après');
+  return updated;
 }
 
 // --- Dispatch automatique : attribue une commande au premier livreur disponible ---
@@ -143,9 +150,10 @@ export async function autoDispatchOrder(orderId: string, couriers: Courier[]): P
 
   const updatedOrder: Order = {
     ...order,
-    status: 'en_route',
     courierId: assignedCourier.id,
     dispatchedAt: new Date().toISOString(),
+    // Note: on ne change pas le statut ici, il reste 'payee' jusqu'à
+    // ce que le livreur confirme qu'il a accepté la commande
   };
 
   try {
