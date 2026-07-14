@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Plus, Minus, ShoppingCart, ShoppingBag, CheckCircle } from 'lucide-react';
-import { getProductById } from '@/lib/products';
+import { getProductByIdAndSlug } from '@/lib/products';
 import { Product } from '@/types';
 import { addToCart, getCart } from '@/lib/cart';
 
@@ -21,7 +21,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     let active = true;
-    getProductById(productId)
+    getProductByIdAndSlug(productId, slug)
       .then((p) => {
         if (active && p) setProduct(p);
       })
@@ -32,7 +32,7 @@ export default function ProductDetailPage() {
     return () => {
       active = false;
     };
-  }, [productId]);
+  }, [productId, slug]);
 
   const handleIncrement = () => {
     if (product && product.stock !== null && quantity >= product.stock) {

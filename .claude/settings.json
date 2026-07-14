@@ -7,6 +7,9 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(git add *)",
       "Bash(git commit -m 'feat: storefront premium minimaliste + corrections paiement *)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"
     ]
   }
 }

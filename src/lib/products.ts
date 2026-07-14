@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { supabase } from './supabase';
 import { Product } from '@/types';
-import { getActiveShopId } from './shop';
+import { getActiveShopId, getShopIdBySlug } from './shop';
 
 const TABLE = 'products';
 
@@ -19,6 +19,7 @@ export const productInputSchema = z.object({
 export type ProductInput = z.infer<typeof productInputSchema>;
 
 // --- Lecture ---
+// Pour le dashboard admin (contexte authentifié) : récupère les produits de la boutique actuelle
 export async function getProducts(): Promise<Product[]> {
   try {
     const shopId = await getActiveShopId();
@@ -36,6 +37,25 @@ export async function getProducts(): Promise<Product[]> {
   }
 }
 
+// Pour la storefront publique : récupère les produits d'une boutique par son slug
+export async function getProductsByShopSlug(slug: string): Promise<Product[]> {
+  try {
+    const shopId = await getShopIdBySlug(slug);
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('shopId', shopId)
+      .eq('isAvailable', true)
+      .order('createdAt', { ascending: false });
+
+    if (error) throw new Error(`Chargement des produits impossible : ${error.message}`);
+    return (data ?? []) as Product[];
+  } catch (err) {
+    console.error('Erreur getProductsByShopSlug:', err);
+    return [];
+  }
+}
+
 export async function getProductById(id: string): Promise<Product | null> {
   const { data, error } = await supabase
     .from(TABLE)
@@ -45,6 +65,28 @@ export async function getProductById(id: string): Promise<Product | null> {
 
   if (error) throw new Error(`Produit introuvable : ${error.message}`);
   return (data as Product | null) ?? null;
+}
+
+// Récupère un produit spécifique d'une boutique (pour la storefront publique)
+export async function getProductByIdAndSlug(
+  productId: string,
+  slug: string
+): Promise<Product | null> {
+  try {
+    const shopId = await getShopIdBySlug(slug);
+    const { data, error } = await supabase
+      .from(TABLE)
+      .select('*')
+      .eq('id', productId)
+      .eq('shopId', shopId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Produit introuvable : ${error.message}`);
+    return (data as Product | null) ?? null;
+  } catch (err) {
+    console.error('Erreur getProductByIdAndSlug:', err);
+    return null;
+  }
 }
 
 // --- Création (nouveau produit : Supabase génère l'id et createdAt) ---

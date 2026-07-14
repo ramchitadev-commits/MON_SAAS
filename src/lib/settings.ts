@@ -5,6 +5,8 @@ const TABLE = 'shop_settings';
 const BUCKET = 'shop-logos';
 
 export interface ShopSettings {
+  id?: string; // ID Supabase (needed for some queries)
+  slug?: string; // URL-friendly identifier (ex: "salikhate-nenuphar")
   name: string;
   description: string;
   payoutPhone: string;
@@ -16,6 +18,7 @@ export interface ShopSettings {
 
 // Valeurs de repli si aucune ligne n'existe encore en base.
 export const DEFAULT_SETTINGS: ShopSettings = {
+  slug: 'boutique-demo',
   name: 'Boutique de Fatou',
   description:
     'Retrouvez le meilleur du prêt-à-porter sénégalais, des tissus wax et des accessoires de mode importés de Turquie. Livraison rapide sur Dakar sous 24h.',
@@ -28,6 +31,10 @@ export const DEFAULT_SETTINGS: ShopSettings = {
 
 // --- Validation Zod (règle AGENTS.md) ---
 export const shopSettingsSchema = z.object({
+  slug: z.string().trim().toLowerCase()
+    .regex(/^[a-z0-9-]+$/, 'Le slug doit contenir uniquement des lettres, chiffres et tirets')
+    .min(1, 'Le slug est obligatoire.')
+    .optional(),
   name: z.string().trim().min(1, 'Le nom de la boutique est obligatoire.'),
   description: z.string().default(''),
   payoutPhone: z.string().trim().min(1, 'Le numéro de réception est obligatoire.'),
@@ -37,9 +44,11 @@ export const shopSettingsSchema = z.object({
   cutoffTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format invalide').nullable().optional(),
 });
 
-// On ne renvoie que les champs métier (pas l'id/createdAt techniques).
+// Transforme une ligne Supabase en objet ShopSettings
 function toSettings(row: Record<string, unknown>): ShopSettings {
   return {
+    id: row.id as string,
+    slug: (row.slug as string) || undefined,
     name: row.name as string,
     description: row.description as string,
     payoutPhone: row.payoutPhone as string,
@@ -50,13 +59,16 @@ function toSettings(row: Record<string, unknown>): ShopSettings {
   };
 }
 
-export async function getShopSettings(): Promise<ShopSettings> {
-  const { data, error } = await supabase
-    .from(TABLE)
-    .select('*')
-    .order('createdAt', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+export async function getShopSettings(slug?: string): Promise<ShopSettings> {
+  let query = supabase.from(TABLE).select('*');
+
+  if (slug) {
+    query = query.eq('slug', slug);
+  } else {
+    query = query.order('createdAt', { ascending: true }).limit(1);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Chargement des paramètres impossible : ${error.message}`);
   return data ? toSettings(data) : DEFAULT_SETTINGS;

@@ -69,7 +69,7 @@ export default function DeliveryPage() {
 
   const checkCutoffTime = async () => {
     try {
-      const settings = await getShopSettings();
+      const settings = await getShopSettings(slug);
       const cutoffTime = settings.cutoffTime || '18:00';
       const now = new Date();
       const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
