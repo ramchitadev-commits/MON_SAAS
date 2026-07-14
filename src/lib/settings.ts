@@ -14,6 +14,7 @@ export interface ShopSettings {
   deliveryFee: number;
   logo?: string | null;
   cutoffTime?: string | null; // HH:MM format, ex: "16:30"
+  sellerName?: string; // Prénom du vendeur pour le greeting
 }
 
 // Valeurs de repli si aucune ligne n'existe encore en base.
@@ -27,6 +28,7 @@ export const DEFAULT_SETTINGS: ShopSettings = {
   deliveryFee: 1500,
   logo: null,
   cutoffTime: '18:00',
+  sellerName: 'Cher partenaire',
 };
 
 // --- Validation Zod (règle AGENTS.md) ---
@@ -42,6 +44,7 @@ export const shopSettingsSchema = z.object({
   deliveryFee: z.number().int().min(0),
   logo: z.string().nullable().optional(),
   cutoffTime: z.string().regex(/^\d{2}:\d{2}$/, 'Format invalide').nullable().optional(),
+  sellerName: z.string().trim().default('Cher partenaire'),
 });
 
 // Transforme une ligne Supabase en objet ShopSettings
@@ -56,6 +59,7 @@ function toSettings(row: Record<string, unknown>): ShopSettings {
     deliveryFee: row.deliveryFee as number,
     logo: (row.logo as string) || null,
     cutoffTime: (row.cutoffTime as string) || '18:00',
+    sellerName: (row.sellerName as string) || 'Cher partenaire',
   };
 }
 

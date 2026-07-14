@@ -11,6 +11,7 @@ export default function BoutiqueSettingsPage() {
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [sellerName, setSellerName] = useState('');
   const [payoutPhone, setPayoutPhone] = useState('');
   const [payoutProvider, setPayoutProvider] = useState<'wave' | 'orange_money'>('wave');
   const [deliveryFee, setDeliveryFee] = useState(1500);
@@ -28,6 +29,7 @@ export default function BoutiqueSettingsPage() {
         if (!active) return;
         setName(settings.name);
         setDescription(settings.description);
+        setSellerName(settings.sellerName || '');
         setPayoutPhone(settings.payoutPhone.replace('+221 ', ''));
         setPayoutProvider(settings.payoutProvider);
         setDeliveryFee(settings.deliveryFee);
@@ -96,6 +98,7 @@ export default function BoutiqueSettingsPage() {
       const updatedSettings: ShopSettings = {
         name,
         description,
+        sellerName,
         payoutPhone: payoutPhone.startsWith('+221') ? payoutPhone : `+221 ${payoutPhone}`,
         payoutProvider,
         deliveryFee,
@@ -161,6 +164,21 @@ export default function BoutiqueSettingsPage() {
               }`}
             />
             {errors.name && <p className="text-xs font-bold text-rose-500 mt-1">{errors.name}</p>}
+          </div>
+
+          {/* Prénom du vendeur */}
+          <div className="space-y-1.5">
+            <label htmlFor="seller-name" className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
+              Votre prénom (utilisé dans le greeting)
+            </label>
+            <input
+              id="seller-name"
+              type="text"
+              value={sellerName}
+              onChange={(e) => setSellerName(e.target.value)}
+              placeholder="Ex: Fatou"
+              className="w-full h-12 px-4 bg-white border-2 border-slate-900 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
+            />
           </div>
 
           {/* Description */}

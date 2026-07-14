@@ -6,7 +6,8 @@
       "PowerShell(git commit -m \"fix: wrap finalize\\(\\) in try/catch so Terminer button always navigates to step 4\")",
       "Bash(pkill -f \"next dev\")",
       "Bash(git add *)",
-      "Bash(git commit -m 'feat: storefront premium minimaliste + corrections paiement *)"
+      "Bash(git commit -m 'feat: storefront premium minimaliste + corrections paiement *)",
+      "Bash(npm run *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"

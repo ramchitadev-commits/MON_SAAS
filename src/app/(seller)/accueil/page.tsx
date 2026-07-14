@@ -147,7 +147,7 @@ export default function AccueilPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-slate-900 md:text-3xl">
-            Dalal ak jamm, Fatou 👋
+            Dalal ak jamm, {settings?.sellerName} 👋
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Voici les performances de votre boutique **{settings?.name}** pour aujourd'hui.
