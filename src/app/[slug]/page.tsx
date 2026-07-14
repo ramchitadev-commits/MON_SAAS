@@ -25,10 +25,11 @@ export default function ShopfrontPage() {
       .then(setSettings)
       .catch((err) => {
         console.error('Erreur getShopSettings:', err);
+        // Fallback générique sans nom hardcodé pour respecter le multi-tenancy
         setSettings({
-          name: 'LA DIVA COLLECTION',
-          description: 'La mode à portée de clic. Commandez en quelques instants, payez par mobile money et faites-vous livrer dans Dakar. Mode premium, service express.',
-          payoutPhone: '77 123 45 67',
+          name: slug ? slug.replace(/-/g, ' ').toUpperCase() : 'BOUTIQUE',
+          description: 'Découvrez nos articles et commandez en ligne. Paiement par mobile money et livraison rapide à Dakar.',
+          payoutPhone: '77 000 00 00',
           payoutProvider: 'wave',
           deliveryFee: 1500,
           logo: null,
