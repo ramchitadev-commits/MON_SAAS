@@ -7,7 +7,8 @@
       "Bash(pkill -f \"next dev\")",
       "Bash(git add *)",
       "Bash(git commit -m 'feat: storefront premium minimaliste + corrections paiement *)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git commit -m 'feat: migration supabase pour ajouter sellerName à shop_settings *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"
