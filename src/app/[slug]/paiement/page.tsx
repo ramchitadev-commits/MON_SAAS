@@ -51,6 +51,27 @@ export default function PaymentPage() {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';
   };
 
+  const getDeliveryDateForOrder = (baseDeliveryDate: string | undefined): string | null => {
+    const now = new Date();
+    const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    // Si après 18h00, force la date de livraison à demain
+    if (currentTime >= '18:00') {
+      const tomorrow = new Date(now);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split('T')[0];
+      return tomorrowStr;
+    }
+
+    // Sinon, utilise la date fournie ou aujourd'hui
+    if (baseDeliveryDate) {
+      return baseDeliveryDate;
+    }
+
+    const todayStr = now.toISOString().split('T')[0];
+    return todayStr;
+  };
+
   const handlePayment = (provider: 'wave' | 'orange_money') => {
     if (!deliveryInfo || cartItems.length === 0) return;
 
@@ -72,6 +93,9 @@ export default function PaymentPage() {
           quantity: item.quantity,
         }));
 
+        // Détermine la date de livraison (demain si après 18h00, sinon la date fournie)
+        const finalDeliveryDate = getDeliveryDateForOrder(deliveryInfo.deliveryDate);
+
         // Crée la commande + ses articles dans Supabase (l'id est généré par la base)
         // Auto-dispatch à un livreur disponible si possible
         const created = await createOrderWithAutoDispatch({
@@ -81,7 +105,7 @@ export default function PaymentPage() {
           deliveryAddress: deliveryInfo.address,
           deliveryNote: deliveryInfo.note || null,
           gpsLocation: deliveryInfo.gpsLocation || null,
-          deliveryDate: deliveryInfo.deliveryDate || null,
+          deliveryDate: finalDeliveryDate,
           subtotal,
           deliveryFee,
           total,
@@ -99,10 +123,17 @@ export default function PaymentPage() {
         // Redirige vers la confirmation
         router.push(`/${slug}/confirmation/${created.id}`);
       } catch (err) {
-        console.error('Erreur de paiement:', err);
+        console.error('Erreur détaillée de paiement:', err);
         setProcessing(false);
-        const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
-        alert(`Le paiement n'a pas pu être enregistré.\n\nDétails: ${errorMessage}`);
+
+        let errorMessage = 'Erreur inconnue';
+        if (err instanceof Error) {
+          errorMessage = err.message;
+        } else if (typeof err === 'object' && err !== null && 'message' in err) {
+          errorMessage = String((err as Record<string, unknown>).message);
+        }
+
+        alert(`Le paiement n'a pas pu être enregistré.\n\nDétails Supabase: ${errorMessage}`);
       }
     }, 2000);
   };

@@ -95,14 +95,24 @@ export async function createOrder(input: OrderInput): Promise<Order> {
     .insert(fieldsToInsert)
     .select()
     .single();
-  if (orderError) throw new Error(`Création de la commande échouée : ${orderError.message}`);
+
+  if (orderError) {
+    const errorDetail = orderError.details || orderError.message || 'Erreur inconnue';
+    const fullErrorMsg = `Création de la commande échouée : ${errorDetail}. Champs: ${JSON.stringify(fieldsToInsert)}`;
+    console.error('[SUPABASE_INSERT_ERROR]', fullErrorMsg);
+    throw new Error(fullErrorMsg);
+  }
 
   const itemsToInsert = items.map((it) => ({ ...it, orderId: orderRow.id }));
   const { error: itemsError } = await supabase.from(ITEMS).insert(itemsToInsert);
+
   if (itemsError) {
     // La commande a été créée sans ses articles : on la supprime pour ne pas laisser d'orphelin.
-    await supabase.from(ORDERS).delete().eq('id', orderRow.id);
-    throw new Error(`Enregistrement des articles échoué : ${itemsError.message}`);
+    const deleteError = await supabase.from(ORDERS).delete().eq('id', orderRow.id);
+    const itemsErrorDetail = itemsError.details || itemsError.message || 'Erreur inconnue';
+    const fullErrorMsg = `Enregistrement des articles échoué : ${itemsErrorDetail}. Commande ${orderRow.id} supprimée.`;
+    console.error('[SUPABASE_ITEMS_ERROR]', fullErrorMsg);
+    throw new Error(fullErrorMsg);
   }
 
   const created = await getOrderById(orderRow.id);
