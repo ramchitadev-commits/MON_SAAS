@@ -8,7 +8,9 @@
       "Bash(git add *)",
       "Bash(git commit -m 'feat: storefront premium minimaliste + corrections paiement *)",
       "Bash(npm run *)",
-      "Bash(git commit -m 'feat: migration supabase pour ajouter sellerName à shop_settings *)"
+      "Bash(git commit -m 'feat: migration supabase pour ajouter sellerName à shop_settings *)",
+      "Bash(curl -s http://localhost:3000/onboarding)",
+      "mcp__supabase__apply_migration"
     ],
     "additionalDirectories": [
       "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"

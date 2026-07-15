@@ -123,9 +123,12 @@ export default function OnboardingPage() {
       }
       setStep(3);
     } else if (step === 3) {
-      if (productName.trim() && (!productPrice || parseInt(productPrice) < 0)) {
-        setError('Entrez un prix valide pour ce produit, ou laissez le nom vide pour passer.');
-        return;
+      if (productName.trim()) {
+        const price = Number(productPrice);
+        if (isNaN(price) || price < 0) {
+          setError('Entrez un prix valide pour ce produit, ou laissez le nom vide pour passer.');
+          return;
+        }
       }
       setIsLoading(true);
       try {

@@ -97,9 +97,26 @@ export async function uploadLogo(file: File): Promise<string> {
   return publicUrl.publicUrl;
 }
 
+// Génère un slug à partir du nom de la boutique
+function generateSlug(name: string): string {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 30) || 'boutique';
+}
+
 // Table mono-ligne pour le prototype : on met à jour la ligne existante, sinon on la crée.
 export async function saveShopSettings(settings: ShopSettings): Promise<ShopSettings> {
   const parsed = shopSettingsSchema.parse(settings);
+
+  // Générer un slug si absent
+  const dataToSave = {
+    ...parsed,
+    slug: parsed.slug || generateSlug(parsed.name),
+  };
 
   const { data: existing, error: selError } = await supabase
     .from(TABLE)
@@ -112,7 +129,7 @@ export async function saveShopSettings(settings: ShopSettings): Promise<ShopSett
   if (existing) {
     const { data, error } = await supabase
       .from(TABLE)
-      .update(parsed)
+      .update(dataToSave)
       .eq('id', existing.id)
       .select()
       .single();
@@ -120,7 +137,7 @@ export async function saveShopSettings(settings: ShopSettings): Promise<ShopSett
     return toSettings(data);
   }
 
-  const { data, error } = await supabase.from(TABLE).insert(parsed).select().single();
+  const { data, error } = await supabase.from(TABLE).insert(dataToSave).select().single();
   if (error) throw new Error(`Création des paramètres échouée : ${error.message}`);
   return toSettings(data);
 }
