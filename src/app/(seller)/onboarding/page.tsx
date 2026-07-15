@@ -78,7 +78,7 @@ export default function OnboardingPage() {
   // Sauvegarde la boutique + le produit éventuel, puis marque l'onboarding terminé.
   const finalize = async () => {
     const base = await getShopSettings();
-    await saveShopSettings({
+    const saved = await saveShopSettings({
       ...base,
       name: shopName.trim(),
       description: `Bienvenue dans ${shopName.trim()} ! Commandez en quelques clics, payez par mobile money et soyez livré.`,
@@ -86,20 +86,22 @@ export default function OnboardingPage() {
       payoutProvider,
     });
 
-    const price = parseInt(productPrice);
-    if (productName.trim() && !isNaN(price) && price >= 0) {
-      try {
-        await createProduct({
-          name: productName.trim(),
-          description: '',
-          price,
-          image: productImage || '',
-          isAvailable: true,
-          stock: null,
-        });
-      } catch (err) {
-        // Le premier produit est facultatif : on n'interrompt pas l'onboarding s'il échoue.
-        console.error('Création du premier produit échouée :', err);
+    if (productName.trim()) {
+      const price = Number(productPrice);
+      if (!isNaN(price) && price >= 0) {
+        try {
+          await createProduct({
+            name: productName.trim(),
+            description: '',
+            price,
+            image: productImage || '',
+            isAvailable: true,
+            stock: null,
+          }, saved.id);
+        } catch (err) {
+          // Le premier produit est facultatif : on n'interrompt pas l'onboarding s'il échoue.
+          console.error('Création du premier produit échouée :', err);
+        }
       }
     }
 

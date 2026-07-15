@@ -10,10 +10,10 @@ const TABLE = 'products';
 export const productInputSchema = z.object({
   name: z.string().trim().min(1, 'Le nom du produit est obligatoire.'),
   description: z.string().default(''),
-  price: z.number().int('Le prix doit être un entier.').min(0, 'Le prix doit être positif.'),
+  price: z.coerce.number().int('Le prix doit être un entier.').min(0, 'Le prix doit être positif.'),
   image: z.string().default(''),
   isAvailable: z.boolean().default(true),
-  stock: z.number().int().min(0).nullable(), // null = stock illimité
+  stock: z.coerce.number().int().min(0).nullable(), // null = stock illimité
 });
 
 export type ProductInput = z.infer<typeof productInputSchema>;
@@ -90,13 +90,13 @@ export async function getProductByIdAndSlug(
 }
 
 // --- Création (nouveau produit : Supabase génère l'id et createdAt) ---
-export async function createProduct(input: ProductInput): Promise<Product> {
+export async function createProduct(input: ProductInput, shopId?: string): Promise<Product> {
   const parsed = productInputSchema.parse(input);
-  const shopId = await getActiveShopId();
+  const shop = shopId || (await getActiveShopId());
 
   const { data, error } = await supabase
     .from(TABLE)
-    .insert({ ...parsed, shopId })
+    .insert({ ...parsed, shopId: shop })
     .select()
     .single();
 
