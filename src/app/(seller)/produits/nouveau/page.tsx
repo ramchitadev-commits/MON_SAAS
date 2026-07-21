@@ -19,6 +19,7 @@ export default function NouveauProduitPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const handleFileChange = (file: File) => {
     if (!file.type.startsWith('image/')) {
@@ -64,15 +65,21 @@ export default function NouveauProduitPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMessage(null);
 
     if (!name.trim()) {
-      alert('Veuillez entrer un nom de produit.');
+      setErrorMessage('Veuillez entrer un nom de produit.');
       return;
     }
 
-    const priceNum = parseInt(price);
+    if (!price || price.trim() === '') {
+      setErrorMessage('Veuillez entrer un prix.');
+      return;
+    }
+
+    const priceNum = parseFloat(price);
     if (isNaN(priceNum) || priceNum < 0) {
-      alert('Veuillez entrer un prix valide (supérieur ou égal à 0).');
+      setErrorMessage('Veuillez entrer un prix valide (supérieur ou égal à 0).');
       return;
     }
 
@@ -92,7 +99,8 @@ export default function NouveauProduitPage() {
       }, 800);
     } catch (err) {
       console.error(err);
-      alert('Création impossible. Vérifiez votre connexion et réessayez.');
+      const errorMsg = err instanceof Error ? err.message : 'Erreur inconnue';
+      setErrorMessage(`Erreur lors de la création: ${errorMsg}`);
       setIsLoading(false);
     }
   };
@@ -106,6 +114,13 @@ export default function NouveauProduitPage() {
             <Check className="h-6 w-6 text-emerald-600" />
             Produit enregistré avec succès !
           </div>
+        </div>
+      )}
+
+      {/* Affichage des erreurs */}
+      {errorMessage && (
+        <div className="bg-red-100 border-2 border-red-500 text-red-900 p-4 rounded-2xl font-bold text-sm shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]">
+          {errorMessage}
         </div>
       )}
 

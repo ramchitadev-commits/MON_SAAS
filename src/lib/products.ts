@@ -10,7 +10,7 @@ const TABLE = 'products';
 export const productInputSchema = z.object({
   name: z.string().trim().min(1, 'Le nom du produit est obligatoire.'),
   description: z.string().default(''),
-  price: z.coerce.number().int('Le prix doit être un entier.').min(0, 'Le prix doit être positif.'),
+  price: z.coerce.number().min(0, 'Le prix doit être supérieur ou égal à 0.'),
   image: z.string().default(''),
   isAvailable: z.boolean().default(true),
   stock: z.coerce.number().int().min(0).nullable(), // null = stock illimité
