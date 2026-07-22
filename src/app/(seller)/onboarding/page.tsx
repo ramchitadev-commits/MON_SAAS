@@ -17,7 +17,7 @@ import {
 } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
 import { setOnboarded } from '@/lib/mockData';
-import { getShopSettings, saveShopSettings } from '@/lib/settings';
+import { getShopSettings, saveShopSettings, ShopSettings } from '@/lib/settings';
 import { createProduct } from '@/lib/products';
 
 // Transforme un nom de boutique en slug d'URL (sans accents ni caractères spéciaux).
@@ -77,35 +77,53 @@ export default function OnboardingPage() {
 
   // Sauvegarde la boutique + le produit éventuel, puis marque l'onboarding terminé.
   const finalize = async () => {
-    const base = await getShopSettings();
-    const saved = await saveShopSettings({
-      ...base,
-      name: shopName.trim(),
-      description: `Bienvenue dans ${shopName.trim()} ! Commandez en quelques clics, payez par mobile money et soyez livré.`,
-      payoutPhone: `+221 ${payoutPhone}`,
-      payoutProvider,
-    });
+    try {
+      // 1. Récupérer la base d'abord
+      let base: Partial<ShopSettings> = {};
+      try {
+        base = await getShopSettings();
+      } catch (e) {
+        console.warn('Impossible de charger les réglages de base, utilisation des valeurs par défaut', e);
+      }
 
-    if (productName.trim()) {
-      const price = Number(productPrice);
-      if (!isNaN(price) && price >= 0) {
-        try {
-          await createProduct({
-            name: productName.trim(),
-            description: '',
-            price,
-            image: productImage || '',
-            isAvailable: true,
-            stock: null,
-          }, saved.id);
-        } catch (err) {
-          // Le premier produit est facultatif : on n'interrompt pas l'onboarding s'il échoue.
-          console.error('Création du premier produit échouée :', err);
+      // 2. Préparer des données COMPLÈTES valides pour la validation Zod
+      const settingsToSave = {
+        ...base,
+        name: shopName.trim(),
+        description: `Bienvenue dans ${shopName.trim()} ! Commandez en quelques clics, payez par mobile money et soyez livré.`,
+        payoutPhone: payoutPhone.trim(), // 9 chiffres sans préfixe superflu
+        payoutProvider,
+        deliveryFee: base.deliveryFee ?? 1500, // Sécurité : impose 1500 FCFA par défaut si absent
+        sellerName: base.sellerName || 'Partenaire',
+      };
+
+      // 3. Sauvegarder la boutique dans Supabase
+      const saved = await saveShopSettings(settingsToSave as ShopSettings);
+
+      // 4. Ajouter le produit facultatif
+      if (productName.trim()) {
+        const price = Number(productPrice);
+        if (!isNaN(price) && price >= 0) {
+          try {
+            await createProduct({
+              name: productName.trim(),
+              description: '',
+              price,
+              image: productImage || '',
+              isAvailable: true,
+              stock: null,
+            }, saved.id);
+          } catch (err) {
+            console.error('Création du premier produit échouée :', err);
+          }
         }
       }
-    }
 
-    setOnboarded(true);
+      setOnboarded(true);
+    } catch (err: any) {
+      console.error('Erreur complète finalize:', err);
+      throw new Error(err?.message || 'Erreur inconnue');
+    }
   };
 
   const goNext = async () => {
@@ -134,9 +152,9 @@ export default function OnboardingPage() {
       try {
         await finalize();
         setStep(4);
-      } catch (err) {
+      } catch (err: any) {
         console.error('Finalisation échouée :', err);
-        setError('Erreur lors de la finalisation. Réessayez.');
+        setError(err?.message || 'Erreur lors de la finalisation. Réessayez.');
         setIsLoading(false);
       }
     }
@@ -150,9 +168,9 @@ export default function OnboardingPage() {
     try {
       await finalize();
       setStep(4);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Finalisation échouée :', err);
-      setError('Erreur lors de la finalisation. Réessayez.');
+      setError(err?.message || 'Erreur lors de la finalisation. Réessayez.');
       setIsLoading(false);
     }
   };
@@ -205,11 +223,10 @@ export default function OnboardingPage() {
                 </code>
                 <button
                   onClick={copyLink}
-                  className={`shrink-0 inline-flex items-center gap-1.5 h-10 px-3 border-2 border-slate-900 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                    copied
-                      ? 'bg-emerald-500 text-white border-emerald-500'
-                      : 'bg-white text-slate-700 hover:bg-slate-50'
-                  }`}
+                  className={`shrink-0 inline-flex items-center gap-1.5 h-10 px-3 border-2 border-slate-900 rounded-xl text-xs font-bold transition-all cursor-pointer ${copied
+                    ? 'bg-emerald-500 text-white border-emerald-500'
+                    : 'bg-white text-slate-700 hover:bg-slate-50'
+                    }`}
                 >
                   {copied ? (
                     <>
@@ -257,9 +274,8 @@ export default function OnboardingPage() {
           {[1, 2, 3].map((s) => (
             <div
               key={s}
-              className={`h-2 flex-1 rounded-full transition-colors ${
-                s <= step ? 'bg-emerald-500' : 'bg-slate-200'
-              }`}
+              className={`h-2 flex-1 rounded-full transition-colors ${s <= step ? 'bg-emerald-500' : 'bg-slate-200'
+                }`}
             />
           ))}
         </div>
@@ -288,9 +304,8 @@ export default function OnboardingPage() {
                     if (error) setError('');
                   }}
                   placeholder="Ex : Fatou Collection"
-                  className={`w-full h-14 px-4 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                    error ? 'border-rose-500' : 'border-slate-900'
-                  }`}
+                  className={`w-full h-14 px-4 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
+                    }`}
                 />
                 {shopName.trim() && (
                   <p className="text-xs text-slate-400 pt-1">
@@ -319,22 +334,20 @@ export default function OnboardingPage() {
                   <button
                     type="button"
                     onClick={() => setPayoutProvider('wave')}
-                    className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      payoutProvider === 'wave'
-                        ? 'border-blue-600 bg-blue-50 text-blue-800'
-                        : 'border-slate-900 hover:bg-slate-50'
-                    }`}
+                    className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${payoutProvider === 'wave'
+                      ? 'border-blue-600 bg-blue-50 text-blue-800'
+                      : 'border-slate-900 hover:bg-slate-50'
+                      }`}
                   >
                     Wave
                   </button>
                   <button
                     type="button"
                     onClick={() => setPayoutProvider('orange_money')}
-                    className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                      payoutProvider === 'orange_money'
-                        ? 'border-orange-600 bg-orange-50 text-orange-800'
-                        : 'border-slate-900 hover:bg-slate-50'
-                    }`}
+                    className={`h-12 border-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${payoutProvider === 'orange_money'
+                      ? 'border-orange-600 bg-orange-50 text-orange-800'
+                      : 'border-slate-900 hover:bg-slate-50'
+                      }`}
                   >
                     Orange Money
                   </button>
@@ -355,9 +368,8 @@ export default function OnboardingPage() {
                     value={payoutPhone}
                     onChange={handlePhoneChange}
                     placeholder="77 123 45 67"
-                    className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                      error ? 'border-rose-500' : 'border-slate-900'
-                    }`}
+                    className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
+                      }`}
                   />
                 </div>
               </div>
@@ -442,9 +454,8 @@ export default function OnboardingPage() {
                       if (error) setError('');
                     }}
                     placeholder="15000"
-                    className={`w-full h-14 pl-4 pr-16 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
-                      error ? 'border-rose-500' : 'border-slate-900'
-                    }`}
+                    className={`w-full h-14 pl-4 pr-16 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
+                      }`}
                   />
                   <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-bold text-slate-400 pointer-events-none">
                     FCFA
