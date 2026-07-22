@@ -3,13 +3,13 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
-import { ShoppingCart, ShoppingBag, Search, X, Zap, Check } from 'lucide-react';
+import { ShoppingCart, ShoppingBag, Search, X } from 'lucide-react';
 import { getShopSettings, ShopSettings } from '@/lib/settings';
 import { getProductsByShopSlug } from '@/lib/products';
 import { Product } from '@/types';
 import { getCart, getCartCount, getCartTotal, CartItem } from '@/lib/cart';
 
-export default function ShopfrontPage() {
+export default function StorefrontPage() {
   const params = useParams();
   const slug = params.slug as string;
 
@@ -25,10 +25,9 @@ export default function ShopfrontPage() {
       .then(setSettings)
       .catch((err) => {
         console.error('Erreur getShopSettings:', err);
-        // Fallback générique sans nom hardcodé pour respecter le multi-tenancy
         setSettings({
           name: slug ? slug.replace(/-/g, ' ').toUpperCase() : 'BOUTIQUE',
-          description: 'Découvrez nos articles et commandez en ligne. Paiement par mobile money et livraison rapide à Dakar.',
+          description: 'Découvrez nos articles et commandez en ligne.',
           payoutPhone: '77 000 00 00',
           payoutProvider: 'wave',
           deliveryFee: 1500,
@@ -75,17 +74,6 @@ export default function ShopfrontPage() {
             shopId: slug,
             createdAt: new Date().toISOString(),
           },
-          {
-            id: 'demo-4',
-            name: 'Écharpe Soie Naturelle',
-            description: 'Écharpe légère et raffinée pour l\'été',
-            price: 22000,
-            image: 'https://images.unsplash.com/photo-1590121215346-8169c6cab826?w=500&h=500&fit=crop',
-            isAvailable: true,
-            stock: 3,
-            shopId: slug,
-            createdAt: new Date().toISOString(),
-          },
         ]);
       })
       .finally(() => setLoading(false));
@@ -116,198 +104,200 @@ export default function ShopfrontPage() {
 
   if (loading || !settings) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FCFCFB]">
+      <div className="flex items-center justify-center min-h-screen bg-slate-100/80">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#FCFCFB] text-slate-900 font-sans pb-28">
-      {/* HEADER — Épuré et élégant avec logotype raffiné */}
-      <header className="sticky top-0 bg-[#FCFCFB] border-b-2 border-slate-200 z-30 px-4 py-5 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Logo Textuel Élégant */}
-          <div className="flex flex-col items-start gap-1">
-            <h1 className="text-2xl md:text-2xl font-serif font-extrabold tracking-tight text-slate-900 leading-none">
-              {settings.name || 'LA DIVA COLLECTION'}
+    <div className="min-h-screen bg-slate-100/80 text-slate-900 font-sans pb-28">
+      {/* Container type Smartphone centré */}
+      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl border-x border-slate-200/60">
+
+        {/* 1. Header Pro & Ancré */}
+        <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 py-3.5 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-[10px] font-bold tracking-wider text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md uppercase">
+                Boutique Vérifiée
+              </span>
+            </div>
+            <h1 className="text-xl font-black text-slate-900 tracking-tight mt-0.5 truncate pr-2">
+              {settings.name}
             </h1>
-            <span className="text-[9px] text-slate-400 font-light tracking-widest uppercase letter-spacing-wide">
-              Dakar, Sénégal
-            </span>
+            <p className="text-xs font-semibold text-slate-400">📍 Dakar, Sénégal</p>
           </div>
 
-          {/* Panier Icon — Épuré et accessible */}
           <Link
             href={`/${slug}/panier`}
-            className="relative p-3 rounded-md hover:bg-slate-100 transition-all duration-200 cursor-pointer"
+            className="relative p-2.5 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all shrink-0"
             title="Mon Panier"
           >
-            <ShoppingCart className="h-6 w-6 text-slate-900" strokeWidth={1.25} />
+            <ShoppingCart className="w-5 h-5 text-slate-700" strokeWidth={2} />
             {cartCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 bg-slate-900 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-emerald-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {cartCount}
               </span>
             )}
           </Link>
-        </div>
-      </header>
+        </header>
 
-      {/* HERO SECTION — Minimaliste et impactant */}
-      <section className="px-4 py-16 md:py-20 bg-[#FCFCFB]">
-        <div className="max-w-4xl mx-auto space-y-6">
-          {/* Badge de paiement — Discret mais visible */}
-          <div className="inline-flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 rounded-lg">
-            <Check className="h-4 w-4 text-slate-900" strokeWidth={2.5} />
-            <span className="text-xs font-medium text-slate-700 tracking-tight">
-              Paiement Wave Direct &amp; Mobile Money
-            </span>
+        <main className="p-4 space-y-4">
+
+          {/* 2. Banner de Confiance & Paiement */}
+          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-2xl shadow-md space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">
+                Mode Premium • Service Express
+              </span>
+              <span className="text-xs bg-white/10 px-2.5 py-1 rounded-full font-medium">
+                ⚡️ 30 sec
+              </span>
+            </div>
+
+            <h2 className="text-lg font-extrabold leading-snug">
+              La mode à portée de clic
+            </h2>
+
+            <p className="text-xs text-slate-300 font-normal leading-relaxed">
+              {settings.description || 'Commandez directement sans passer par les vocaux WhatsApp.'}
+            </p>
+
+            {/* Badges de paiements colorés Wave & Orange Money */}
+            <div className="pt-2 border-t border-slate-700/80 flex items-center gap-2 flex-wrap">
+              {settings.payoutProvider === 'wave' && (
+                <span className="inline-flex items-center gap-1 bg-[#00C2FF]/15 text-[#00C2FF] border border-[#00C2FF]/30 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  🔵 Wave Direct
+                </span>
+              )}
+              {settings.payoutProvider === 'orange_money' && (
+                <span className="inline-flex items-center gap-1 bg-orange-500/15 text-orange-400 border border-orange-500/30 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                  🟠 Orange Money
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold px-2.5 py-1 rounded-lg">
+                🛵 Livraison 24h
+              </span>
+            </div>
           </div>
 
-          {/* Titre principal — Typographie Serif élégante */}
-          <h2 className="text-3xl md:text-5xl font-serif font-black tracking-tight text-slate-900 max-w-3xl leading-tight">
-            La mode à portée de clic
-          </h2>
-
-          {/* Message d'accueil — Concis et engageant */}
-          <p className="text-sm md:text-base text-slate-600 max-w-2xl leading-relaxed font-light">
-            Commandez en quelques instants, payez par mobile money et faites-vous livrer. Mode premium, service express.
-          </p>
-        </div>
-      </section>
-
-      {/* MAIN CONTENT — Recherche et Grille */}
-      <main className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-        {/* Barre de recherche — Minimaliste et épurée */}
-        <div className="space-y-4">
+          {/* 3. Barre de recherche encadrée */}
           <div className="relative">
-            <span className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-slate-300">
-              <Search className="h-4 w-4" strokeWidth={1.5} />
-            </span>
             <input
               type="text"
-              placeholder="Rechercher un article..."
+              placeholder="Rechercher une robe, un sac..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-12 py-3 bg-white border border-slate-200 rounded-md text-sm placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-slate-400 transition-all"
+              className="w-full bg-slate-50 border border-slate-200 focus:bg-white focus:border-emerald-500 rounded-xl pl-10 pr-10 py-3 text-sm font-medium transition-all outline-none"
             />
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5 pointer-events-none" strokeWidth={2} />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute inset-y-0 right-0 flex items-center pr-4 text-slate-300 hover:text-slate-500 transition-colors"
+                className="absolute right-3.5 top-3.5 text-slate-400 hover:text-slate-600 transition-colors"
                 aria-label="Effacer"
               >
-                <X className="h-4 w-4" strokeWidth={2} />
+                <X className="w-4 h-4" strokeWidth={2} />
               </button>
             )}
           </div>
 
-          {/* Section title — Discret mais informatif */}
-          <div className="flex items-center justify-between">
-            <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-              Articles disponibles ({filteredProducts.length})
-            </h3>
-          </div>
-        </div>
+          {/* 4. Section Produits */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider">
+                Articles disponibles
+              </h3>
+              <span className="text-xs font-semibold text-slate-400">{filteredProducts.length} article{filteredProducts.length > 1 ? 's' : ''}</span>
+            </div>
 
-        {/* GRILLE DE PRODUITS — Moderne et aérée */}
-        {filteredProducts.length > 0 ? (
-          <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredProducts.map((product) => (
-              <Link
-                key={product.id}
-                href={`/${slug}/p/${product.id}`}
-                className="group flex flex-col space-y-4 cursor-pointer"
-              >
-                {/* Image Container — Arrondi léger et effet de survol subtil */}
-                <div className="relative aspect-square w-full bg-slate-50 rounded-md overflow-hidden border border-slate-100 transition-all group-hover:border-slate-300">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={product.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}
-                    alt={product.name}
-                    className="object-cover w-full h-full group-hover:scale-103 transition-transform duration-500"
-                  />
+            {filteredProducts.length > 0 ? (
+              <div className="grid gap-3 grid-cols-2">
+                {filteredProducts.map((product) => (
+                  <Link
+                    key={product.id}
+                    href={`/${slug}/p/${product.id}`}
+                    className="group flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-emerald-400 hover:shadow-md transition-all"
+                  >
+                    {/* Image Container */}
+                    <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={product.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}
+                        alt={product.name}
+                        className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-300"
+                      />
 
-                  {/* Stock Badge — Discret et épuré */}
-                  {product.stock !== null && product.stock <= 3 && product.stock > 0 && (
-                    <span className="absolute top-3 left-3 bg-slate-900 text-white text-[10px] font-bold px-2.5 py-1 rounded">
-                      Dernier(s) {product.stock}
-                    </span>
-                  )}
+                      {product.stock === 0 && (
+                        <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                          <span className="text-xs font-bold text-white bg-black/50 px-2.5 py-1 rounded-lg">Rupture</span>
+                        </div>
+                      )}
 
-                  {product.stock === 0 && (
-                    <div className="absolute inset-0 bg-white/70 flex items-center justify-center">
-                      <span className="text-xs font-semibold text-slate-600">Rupture</span>
+                      {product.stock !== null && product.stock <= 3 && product.stock > 0 && (
+                        <span className="absolute top-2 left-2 bg-emerald-600 text-white text-[10px] font-bold px-2 py-1 rounded-lg">
+                          {product.stock} restant
+                        </span>
+                      )}
                     </div>
-                  )}
-                </div>
 
-                {/* Product Info — Typographie claire et hiérarchisée */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-slate-900 line-clamp-2 group-hover:text-slate-700 transition-colors">
-                    {product.name}
-                  </h4>
-                  {product.description && (
-                    <p className="text-xs text-slate-500 line-clamp-1">
-                      {product.description}
-                    </p>
-                  )}
+                    {/* Product Info */}
+                    <div className="p-3 space-y-2 flex flex-col flex-1">
+                      <h4 className="text-xs font-bold text-slate-900 line-clamp-2 leading-tight">
+                        {product.name}
+                      </h4>
+                      {product.description && (
+                        <p className="text-[11px] text-slate-500 line-clamp-1">
+                          {product.description}
+                        </p>
+                      )}
 
-                  {/* Price & CTA — Alignement clair */}
-                  <div className="flex items-baseline justify-between pt-2">
-                    <span className="text-base font-bold text-slate-900">
-                      {formatPrice(product.price)}
-                    </span>
-                    {product.stock !== 0 && (
-                      <span className="text-[10px] text-slate-400 group-hover:text-slate-600 transition-colors font-medium">
-                        Commander →
-                      </span>
-                    )}
-                  </div>
+                      <div className="mt-auto pt-1">
+                        <span className="text-sm font-extrabold text-emerald-700">
+                          {formatPrice(product.price)}
+                        </span>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center space-y-2">
+                <div className="w-12 h-12 bg-white rounded-2xl shadow-xs border border-slate-200 flex items-center justify-center mx-auto text-2xl">
+                  🛍️
                 </div>
-              </Link>
-            ))}
+                <p className="text-sm font-bold text-slate-800">
+                  {searchQuery ? 'Aucun article trouvé' : 'Aucun article pour le moment'}
+                </p>
+                <p className="text-xs text-slate-500 max-w-[220px] mx-auto">
+                  {searchQuery
+                    ? 'Essayez une autre recherche.'
+                    : 'Les nouveautés arrivent très vite sur cette boutique !'}
+                </p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center py-20 text-center">
-            <ShoppingBag className="h-14 w-14 text-slate-200 mb-4" strokeWidth={1} />
-            <h4 className="text-sm font-semibold text-slate-700">Aucun produit trouvé</h4>
-            <p className="text-xs text-slate-500 mt-2">
-              {searchQuery
-                ? "Essayez une autre recherche."
-                : "Revenez bientôt pour découvrir nos articles."}
-            </p>
+
+        </main>
+
+        {/* 5. Bouton de Commande Ancré en bas */}
+        {cartCount > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/90 backdrop-blur-md border-t border-slate-200/80 z-50">
+            <div className="max-w-md mx-auto">
+              <Link
+                href={`/${slug}/panier`}
+                className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+              >
+                <ShoppingCart className="w-4 h-4" strokeWidth={2.5} />
+                <span>Voir le panier · {formatPrice(cartTotal)}</span>
+              </Link>
+            </div>
           </div>
         )}
-      </main>
 
-      {/* STICKY CART BAR — Moderne, flottant et accessible */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-[#FCFCFB] border-t-2 border-slate-200 px-4 py-4 z-40 backdrop-blur-sm">
-          <Link
-            href={`/${slug}/panier`}
-            className="max-w-7xl mx-auto flex items-center justify-between px-6 py-4 bg-slate-900 hover:bg-slate-800 active:translate-y-0.5 transition-all duration-150 text-white rounded-lg shadow-[3px_3px_0px_0px_rgba(0,0,0,0.15)]"
-          >
-            <div className="flex items-center gap-3">
-              <ShoppingCart className="h-5 w-5" strokeWidth={1.5} />
-              <span className="text-sm font-semibold">Voir le panier</span>
-              <span className="bg-white text-slate-900 text-xs font-bold px-2.5 py-0.5 rounded-full ml-2">
-                {cartCount}
-              </span>
-            </div>
-            <span className="text-base font-bold tracking-tight">
-              {formatPrice(cartTotal)}
-            </span>
-          </Link>
-        </div>
-      )}
-
-      {/* Footer — Discret et élégant */}
-      <footer className="mt-24 py-10 border-t border-slate-200 text-center bg-white">
-        <p className="text-[10px] text-slate-400 font-light tracking-widest uppercase">
-          © {new Date().getFullYear()} {settings.name || 'LA DIVA COLLECTION'} · Dakar
-        </p>
-      </footer>
+      </div>
     </div>
   );
 }

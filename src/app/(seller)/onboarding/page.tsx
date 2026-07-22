@@ -54,7 +54,7 @@ export default function OnboardingPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   const slug = slugify(shopName);
-  const shopUrl = `doole.sn/${slug}`;
+  const shopUrl = `${slug}`;
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setPayoutPhone(e.target.value.replace(/\D/g, '').slice(0, 9));
@@ -188,7 +188,10 @@ export default function OnboardingPage() {
   };
 
   const copyLink = () => {
-    navigator.clipboard?.writeText(`https://${shopUrl}`);
+    const fullUrl = typeof window !== 'undefined'
+      ? `${window.location.origin}/${shopUrl}`
+      : `https://doole.sn/${shopUrl}`;
+    navigator.clipboard?.writeText(fullUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
