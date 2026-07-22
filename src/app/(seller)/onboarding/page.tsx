@@ -25,7 +25,7 @@ const slugify = (value: string): string =>
   value
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '') // retire les accents (diacritiques combinants)
+    .replace(/[\u0300-\u036f]/g, '') // retire les accents (diacritiques combinants)
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .slice(0, 30) || 'ma-boutique';
@@ -105,14 +105,17 @@ export default function OnboardingPage() {
         const price = Number(productPrice);
         if (!isNaN(price) && price >= 0) {
           try {
-            await createProduct({
-              name: productName.trim(),
-              description: '',
-              price,
-              image: productImage || '',
-              isAvailable: true,
-              stock: null,
-            }, saved.id);
+            await createProduct(
+              {
+                name: productName.trim(),
+                description: '',
+                price,
+                image: productImage || '',
+                isAvailable: true,
+                stock: null,
+              },
+              saved.id
+            );
           } catch (err) {
             console.error('Création du premier produit échouée :', err);
           }
@@ -120,9 +123,10 @@ export default function OnboardingPage() {
       }
 
       setOnboarded(true);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Erreur complète finalize:', err);
-      throw new Error(err?.message || 'Erreur inconnue');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
+      throw new Error(errorMessage);
     }
   };
 
@@ -152,9 +156,10 @@ export default function OnboardingPage() {
       try {
         await finalize();
         setStep(4);
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error('Finalisation échouée :', err);
-        setError(err?.message || 'Erreur lors de la finalisation. Réessayez.');
+        const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la finalisation. Réessayez.';
+        setError(errorMessage);
         setIsLoading(false);
       }
     }
@@ -168,9 +173,10 @@ export default function OnboardingPage() {
     try {
       await finalize();
       setStep(4);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Finalisation échouée :', err);
-      setError(err?.message || 'Erreur lors de la finalisation. Réessayez.');
+      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la finalisation. Réessayez.';
+      setError(errorMessage);
       setIsLoading(false);
     }
   };
