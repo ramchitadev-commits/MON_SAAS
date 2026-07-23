@@ -89,6 +89,7 @@ export default function OnboardingPage() {
       // 2. Préparer des données COMPLÈTES valides pour la validation Zod
       const settingsToSave = {
         ...base,
+        slug: slug, // Inclure le slug pour retrouver la boutique en storefront
         name: shopName.trim(),
         description: `Bienvenue dans ${shopName.trim()} ! Commandez en quelques clics, payez par mobile money et soyez livré.`,
         payoutPhone: payoutPhone.trim(), // 9 chiffres sans préfixe superflu

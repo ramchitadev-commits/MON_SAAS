@@ -85,8 +85,8 @@ export default function ProduitsPage() {
                 product.isAvailable ? 'border-slate-200' : 'border-slate-200 opacity-70 bg-slate-50/50'
               }`}
             >
-              {/* Image & Edit button overlay */}
-              <div className="relative aspect-video w-full bg-slate-100 overflow-hidden">
+              {/* Image & Edit button overlay — accepte n'importe quel ratio */}
+              <div className="relative w-full bg-slate-100 overflow-hidden" style={{ minHeight: '180px', aspectRatio: 'auto' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={product.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}

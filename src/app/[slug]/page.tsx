@@ -221,8 +221,8 @@ export default function StorefrontPage() {
                     href={`/${slug}/p/${product.id}`}
                     className="group flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] transition-all"
                   >
-                    {/* Image Container */}
-                    <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
+                    {/* Image Container — accepte n'importe quel ratio */}
+                    <div className="relative w-full bg-slate-100 overflow-hidden" style={{ minHeight: '200px', aspectRatio: 'auto' }}>
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={product.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}

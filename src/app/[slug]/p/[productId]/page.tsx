@@ -108,13 +108,14 @@ export default function ProductDetailPage() {
       <main className="max-w-xl mx-auto px-4 py-6 space-y-6">
         {/* Card interactive style flat */}
         <div className="bg-white border-2 border-slate-900 rounded-2xl overflow-hidden shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
-          {/* Image */}
-          <div className="aspect-square relative bg-slate-100 border-b-2 border-slate-900 overflow-hidden">
+          {/* Image — accepte n'importe quel ratio (1:1, 3:4, 16:9, etc) */}
+          <div className="relative bg-slate-100 border-b-2 border-slate-900 overflow-hidden" style={{ aspectRatio: 'auto' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={product.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}
               alt={product.name}
               className="object-cover w-full h-full"
+              style={{ minHeight: '300px' }}
             />
           </div>
 
