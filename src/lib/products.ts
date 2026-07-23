@@ -125,3 +125,36 @@ export async function deleteProduct(id: string): Promise<void> {
   const { error } = await supabase.from(TABLE).delete().eq('id', id);
   if (error) throw new Error(`Suppression du produit échouée : ${error.message}`);
 }
+
+// --- Vérification du stock avant commande (atomique) ---
+// Valide que tous les produits du panier ont du stock disponible.
+// Retourne true si OK, lance une exception si stock insuffisant.
+export async function verifyStockAvailability(items: Array<{ productId: string; quantity: number }>): Promise<boolean> {
+  if (items.length === 0) {
+    throw new Error('Le panier est vide.');
+  }
+
+  const productIds = items.map((item) => item.productId);
+  const { data: products, error } = await supabase
+    .from(TABLE)
+    .select('id, stock, name')
+    .in('id', productIds);
+
+  if (error) throw new Error(`Vérification du stock échouée : ${error.message}`);
+
+  // Vérifie que chaque article a du stock
+  for (const item of items) {
+    const product = (products ?? []).find((p) => p.id === item.productId);
+    if (!product) {
+      throw new Error(`Produit ${item.productId} n'existe pas.`);
+    }
+    // stock === null => illimité, sinon vérifier
+    if (product.stock !== null && product.stock < item.quantity) {
+      throw new Error(
+        `Stock insuffisant pour "${product.name}". Disponible: ${product.stock}, demandé: ${item.quantity}.`
+      );
+    }
+  }
+
+  return true;
+}

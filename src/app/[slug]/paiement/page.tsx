@@ -7,6 +7,7 @@ import { ArrowLeft, CreditCard, ShieldCheck } from 'lucide-react';
 import { getCart, getCartTotal, clearCart, CartItem } from '@/lib/cart';
 import { createOrderWithAutoDispatch } from '@/lib/actions';
 import { WaveLogo, OrangeMoneyLogo } from '@/components/logos';
+import { BUTTON_WAVE, BUTTON_ORANGE_MONEY } from '@/lib/designTokens';
 
 interface DeliveryInfo {
   name: string;
@@ -29,6 +30,7 @@ export default function PaymentPage() {
   const [processing, setProcessing] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState<'wave' | 'orange_money' | null>(null);
   const [loading, setLoading] = useState(true);
+  const [stockError, setStockError] = useState<string | null>(null);
 
   useEffect(() => {
     const items = getCart(slug);
@@ -133,7 +135,12 @@ export default function PaymentPage() {
           errorMessage = String((err as Record<string, unknown>).message);
         }
 
-        alert(`Le paiement n'a pas pu être enregistré.\n\nDétails Supabase: ${errorMessage}`);
+        // Si erreur de stock, afficher un message plus clair à l'écran
+        if (errorMessage.includes('Stock insuffisant') || errorMessage.includes('stock')) {
+          setStockError(errorMessage);
+        } else {
+          alert(`Le paiement n'a pas pu être enregistré.\n\nDétails: ${errorMessage}`);
+        }
       }
     }, 2000);
   };
@@ -171,6 +178,22 @@ export default function PaymentPage() {
 
       {/* Corps */}
       <main className="max-w-xl mx-auto px-4 py-6 relative">
+        {stockError && (
+          <div className="mb-4 bg-rose-50 border-2 border-rose-500 rounded-2xl p-4 text-rose-900 text-sm font-semibold shadow-[2px_2px_0px_0px_rgba(244,63,94,0.3)]">
+            <div className="font-bold mb-1">⚠️ Stock indisponible</div>
+            <div className="text-xs">{stockError}</div>
+            <button
+              onClick={() => {
+                setStockError(null);
+                router.push(`/${slug}/panier`);
+              }}
+              className="mt-3 inline-flex items-center gap-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-4 py-2 border border-rose-900 rounded-lg transition-all"
+            >
+              Retour au panier
+            </button>
+          </div>
+        )}
+
         {processing && (
           <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-xs flex flex-col items-center justify-center z-50 p-6 text-center text-white">
             <div className="animate-spin rounded-full h-12 w-12 border-b-4 border-emerald-400 mb-4"></div>
@@ -211,7 +234,7 @@ export default function PaymentPage() {
               <button
                 type="button"
                 onClick={() => handlePayment('wave')}
-                className="h-16 w-full bg-[#00A3E0] hover:bg-[#0092c9] text-white border-2 border-black rounded-2xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className={BUTTON_WAVE}
               >
                 <WaveLogo className="h-9 w-auto" />
               </button>
@@ -220,7 +243,7 @@ export default function PaymentPage() {
               <button
                 type="button"
                 onClick={() => handlePayment('orange_money')}
-                className="h-16 w-full bg-black hover:bg-slate-950 text-[#FF6600] border-2 border-black rounded-2xl shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className={BUTTON_ORANGE_MONEY}
               >
                 <OrangeMoneyLogo className="h-9 w-auto" />
               </button>

@@ -158,7 +158,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       </div>
 
       {/* Navigation Mobile Basse (Bottom Bar) */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex items-center justify-around px-2 z-50 shadow-lg">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-white border-t border-slate-200 flex items-center justify-around px-2 z-50 shadow-[0_-2px_4px_rgba(0,0,0,0.1)]">
         {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href || pathname.startsWith(item.href + '/');

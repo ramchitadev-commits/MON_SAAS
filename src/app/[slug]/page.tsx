@@ -113,7 +113,7 @@ export default function StorefrontPage() {
   return (
     <div className="min-h-screen bg-slate-100/80 text-slate-900 font-sans pb-28">
       {/* Container type Smartphone centré */}
-      <div className="max-w-md mx-auto bg-white min-h-screen shadow-xl border-x border-slate-200/60">
+      <div className="max-w-md mx-auto bg-white min-h-screen border-x border-slate-200/60 shadow-[5px_0px_10px_0px_rgba(0,0,0,0.1)]">
 
         {/* 1. Header Pro & Ancré */}
         <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-100 px-4 py-3.5 flex items-center justify-between">
@@ -147,7 +147,7 @@ export default function StorefrontPage() {
         <main className="p-4 space-y-4">
 
           {/* 2. Banner de Confiance & Paiement */}
-          <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-4 rounded-2xl shadow-md space-y-3">
+          <div className="bg-slate-900 text-white p-4 rounded-2xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wide">
                 Mode Premium • Service Express
@@ -219,7 +219,7 @@ export default function StorefrontPage() {
                   <Link
                     key={product.id}
                     href={`/${slug}/p/${product.id}`}
-                    className="group flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-emerald-400 hover:shadow-md transition-all"
+                    className="group flex flex-col bg-slate-50 border border-slate-200 rounded-xl overflow-hidden hover:border-emerald-400 hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,0.1)] transition-all"
                   >
                     {/* Image Container */}
                     <div className="relative aspect-square w-full bg-slate-100 overflow-hidden">
@@ -288,7 +288,7 @@ export default function StorefrontPage() {
             <div className="max-w-md mx-auto">
               <Link
                 href={`/${slug}/panier`}
-                className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm py-3.5 px-4 rounded-xl shadow-lg shadow-emerald-600/20 transition-all flex items-center justify-center gap-2"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-extrabold text-sm py-3.5 px-4 rounded-xl shadow-[2px_2px_0px_0px_rgba(0,0,0,0.15)] transition-all flex items-center justify-center gap-2"
               >
                 <ShoppingCart className="w-4 h-4" strokeWidth={2.5} />
                 <span>Voir le panier · {formatPrice(cartTotal)}</span>
