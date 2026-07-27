@@ -2,25 +2,40 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { Home, ClipboardList, Tag, RefreshCw, Truck, Settings, LogIn } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { Home, ClipboardList, Tag, Truck, Settings, LogIn } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { resetAllData } from '@/lib/mockData';
+import { clearAuthSession, isAuthenticated } from '@/lib/auth';
 import { countActiveOrders } from '@/lib/orders';
 import { getShopSettings } from '@/lib/settings';
 
 export default function SellerLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [badgeCount, setBadgeCount] = useState(0);
   const [storeName, setStoreName] = useState('Boutique de Fatou');
+  const [mounted, setMounted] = useState(false);
 
-  // Initialise le stockage au premier montage
+  // Vérifie l'authentification et initialise
   useEffect(() => {
+    setMounted(true);
+
+    // Si pas authentifié et qu'on n'est pas sur une page d'auth, rediriger
+    const isAuthRoute = pathname.startsWith('/entrer') || pathname.startsWith('/onboarding');
+    if (!isAuthRoute && !isAuthenticated()) {
+      router.replace('/entrer');
+      return;
+    }
+  }, [pathname, router]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     updateBadge();
     const loadStoreName = () =>
       getShopSettings()
         .then((s) => setStoreName(s.name))
-        .catch((err) => console.error(err));
+        .catch((err) => console.error('Erreur chargement boutique:', err));
     loadStoreName();
 
     // Ecoute les changements de statut des commandes
@@ -29,7 +44,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       loadStoreName();
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mounted]);
 
   const updateBadge = () => {
     countActiveOrders()
@@ -37,12 +52,9 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
       .catch((err) => console.error(err));
   };
 
-  const handleReset = () => {
-    if (confirm('Voulez-vous réinitialiser toutes les données de démonstration ?')) {
-      resetAllData();
-      updateBadge();
-      window.location.reload();
-    }
+  const handleLogout = () => {
+    clearAuthSession();
+    router.replace('/entrer');
   };
 
   const navItems = [
@@ -107,19 +119,12 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         </nav>
 
         <div className="p-4 border-t border-slate-100 space-y-1">
-          <Link
-            href="/entrer"
-            className="flex items-center gap-2 w-full px-4 py-2 text-xs text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-          >
-            <LogIn className="h-3.5 w-3.5" />
-            Connexion / Onboarding
-          </Link>
           <button
-            onClick={handleReset}
+            onClick={handleLogout}
             className="flex items-center gap-2 w-full px-4 py-2 text-xs text-slate-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
           >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Réinitialiser la Démo
+            <LogIn className="h-3.5 w-3.5" />
+            Déconnexion
           </button>
         </div>
       </aside>
@@ -130,19 +135,12 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         <header className="flex md:hidden items-center justify-between h-16 bg-white border-b border-slate-200 px-4 shrink-0">
           <DooleLogo className="h-7" />
           <div className="flex items-center gap-3">
-            <Link
-              href="/entrer"
-              title="Connexion / Onboarding"
-              className="p-2 text-slate-500 hover:text-emerald-600 rounded-lg hover:bg-slate-50 transition-colors"
-            >
-              <LogIn className="h-4 w-4" />
-            </Link>
             <button
-              onClick={handleReset}
-              title="Réinitialiser la Démo"
+              onClick={handleLogout}
+              title="Déconnexion"
               className="p-2 text-slate-500 hover:text-red-600 rounded-lg hover:bg-slate-50 transition-colors"
             >
-              <RefreshCw className="h-4 w-4" />
+              <LogIn className="h-4 w-4" />
             </button>
             <div className="text-right">
               <div className="text-xs font-bold text-slate-800 line-clamp-1">{storeName}</div>

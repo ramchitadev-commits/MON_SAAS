@@ -8,11 +8,15 @@ import { Order } from '@/types';
 
 export async function createOrderWithAutoDispatch(input: OrderInput): Promise<Order> {
   // 0. Vérification atomique du stock AVANT création de commande
-  const itemsToVerify = input.items.map((item) => ({
-    productId: item.productId,
-    quantity: item.quantity,
-  }));
-  await verifyStockAvailability(itemsToVerify);
+  const itemsToVerify = input.items
+    .filter((item) => item.productId)
+    .map((item) => ({
+      productId: item.productId as string,
+      quantity: item.quantity,
+    }));
+  if (itemsToVerify.length > 0) {
+    await verifyStockAvailability(itemsToVerify);
+  }
 
   // 1. Crée la commande en base de données
   const order = await createOrderDb(input);

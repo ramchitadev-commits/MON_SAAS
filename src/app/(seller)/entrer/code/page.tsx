@@ -4,7 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { setAuthenticated, isOnboarded } from '@/lib/mockData';
+import { setAuthSession } from '@/lib/auth';
+import { getShopSettings } from '@/lib/settings';
 
 const OTP_LENGTH = 6;
 
@@ -65,7 +66,7 @@ export default function CodeOtpPage() {
     focusInput(Math.min(pasted.length, OTP_LENGTH - 1));
   };
 
-  const verify = (e: React.FormEvent) => {
+  const verify = async (e: React.FormEvent) => {
     e.preventDefault();
     const code = digits.join('');
     if (code.length < OTP_LENGTH) {
@@ -74,12 +75,25 @@ export default function CodeOtpPage() {
     }
 
     setVerifying(true);
-    // Prototype : aucun vrai contrôle serveur, tout code à 6 chiffres est accepté.
-    setTimeout(() => {
-      if (phone) setAuthenticated(phone);
-      // Boutique déjà configurée → tableau de bord ; sinon → onboarding.
-      router.replace(isOnboarded() ? '/accueil' : '/onboarding');
-    }, 600);
+    try {
+      if (phone) {
+        setAuthSession(phone);
+
+        // Vérifie si une boutique existe déjà pour ce vendeur
+        try {
+          const shop = await getShopSettings();
+          // Boutique existante → tableau de bord
+          router.replace('/accueil');
+        } catch {
+          // Pas de boutique → onboarding
+          router.replace('/onboarding');
+        }
+      }
+    } catch (err) {
+      console.error('Erreur lors de la vérification:', err);
+      setError('Erreur lors de la vérification. Veuillez réessayer.');
+      setVerifying(false);
+    }
   };
 
   const handleResend = () => {

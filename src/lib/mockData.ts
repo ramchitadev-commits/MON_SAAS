@@ -28,6 +28,23 @@ export const setOnboarded = (value: boolean) => {
   localStorage.setItem('doole_onboarded', value ? 'true' : 'false');
 };
 
+// Stocke l'ID de la boutique "active" (celle du vendeur connecté)
+// Utile pour multi-tenancy : chaque vendeur a sa boutique
+export const getActiveShopIdFromStorage = (): string | null => {
+  if (!isClient()) return null;
+  return localStorage.getItem('doole_active_shop_id');
+};
+
+export const setActiveShopId = (shopId: string) => {
+  if (!isClient()) return;
+  localStorage.setItem('doole_active_shop_id', shopId);
+};
+
+export const clearActiveShopId = () => {
+  if (!isClient()) return;
+  localStorage.removeItem('doole_active_shop_id');
+};
+
 // Réinitialise l'état connexion/onboarding pour rejouer le parcours de démo.
 // (Les données produits/commandes/livreurs/boutique vivent désormais dans Supabase.)
 export const resetAllData = () => {

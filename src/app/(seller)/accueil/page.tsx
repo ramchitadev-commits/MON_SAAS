@@ -2,7 +2,8 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   TrendingUp,
@@ -20,6 +21,7 @@ import {
 } from 'lucide-react';
 import { getShopSettings, ShopSettings } from '@/lib/settings';
 import { getOrders } from '@/lib/orders';
+import { isAuthenticated } from '@/lib/auth';
 import { Order } from '@/types';
 
 type PeriodFilter = 'today' | 'month' | 'quarter' | 'year';
@@ -31,12 +33,20 @@ interface PeriodConfig {
 }
 
 export default function AccueilPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [settings, setSettings] = useState<ShopSettings | null>(null);
   const [copied, setCopied] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState<PeriodFilter>('today');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  // Vérifie l'authentification au chargement
+  useEffect(() => {
+    if (mounted && !isAuthenticated()) {
+      router.replace('/entrer');
+    }
+  }, [mounted, router]);
 
   const periodConfigs: Record<PeriodFilter, PeriodConfig> = {
     today: {
@@ -83,8 +93,17 @@ export default function AccueilPage() {
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const loadOrders = () => getOrders().then(setOrders).catch((err) => console.error(err));
-    const loadSettings = () => getShopSettings().then(setSettings).catch((err) => console.error(err));
+    const loadSettings = () => getShopSettings().then(setSettings).catch((err) => {
+      console.error('Erreur au chargement de la boutique:', err);
+      // Si on ne peut pas charger la boutique, rediriger vers onboarding
+      router.replace('/onboarding');
+    });
     loadOrders();
     loadSettings();
 
@@ -93,7 +112,7 @@ export default function AccueilPage() {
       loadSettings();
     }, 2000);
     return () => clearInterval(interval);
-  }, []);
+  }, [mounted, router]);
 
   // Calcule le CA selon la période sélectionnée
   const calculateFilteredRevenue = () => {

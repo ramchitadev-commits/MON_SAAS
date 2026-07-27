@@ -1,14 +1,24 @@
 import { supabase } from './supabase';
+import { getAuthPhone, getAuthEmail } from './auth';
 
-// Récupère l'ID de la boutique actuelle (table mono-ligne)
-// Utilisé côté admin/seller (contexte authentifié)
+// Récupère l'ID de la boutique du vendeur authentifié (multi-tenancy)
 export async function getActiveShopId(): Promise<string> {
-  const { data, error } = await supabase
-    .from('shop_settings')
-    .select('id')
-    .order('createdAt', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const sellerPhone = getAuthPhone();
+  const sellerEmail = getAuthEmail();
+
+  if (!sellerPhone && !sellerEmail) {
+    throw new Error('Aucun utilisateur authentifié. Veuillez vous connecter.');
+  }
+
+  let query = supabase.from('shop_settings').select('id');
+
+  if (sellerEmail) {
+    query = query.eq('sellerEmail', sellerEmail);
+  } else if (sellerPhone) {
+    query = query.eq('sellerPhone', sellerPhone);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Chargement de la boutique impossible : ${error.message}`);
   if (!data) throw new Error('Aucune boutique créée. Complétez d\'abord l\'onboarding.');

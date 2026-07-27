@@ -16,7 +16,6 @@ import {
   SkipForward,
 } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { setOnboarded } from '@/lib/mockData';
 import { getShopSettings, saveShopSettings, ShopSettings } from '@/lib/settings';
 import { createProduct } from '@/lib/products';
 
@@ -92,7 +91,7 @@ export default function OnboardingPage() {
         slug: slug, // Inclure le slug pour retrouver la boutique en storefront
         name: shopName.trim(),
         description: `Bienvenue dans ${shopName.trim()} ! Commandez en quelques clics, payez par mobile money et soyez livré.`,
-        payoutPhone: payoutPhone.trim(), // 9 chiffres sans préfixe superflu
+        payoutPhone: payoutPhone.trim() || '', // 9 chiffres sans préfixe superflu
         payoutProvider,
         deliveryFee: base.deliveryFee ?? 1500, // Sécurité : impose 1500 FCFA par défaut si absent
         sellerName: base.sellerName || 'Partenaire',
@@ -122,8 +121,6 @@ export default function OnboardingPage() {
           }
         }
       }
-
-      setOnboarded(true);
     } catch (err: unknown) {
       console.error('Erreur complète finalize:', err);
       const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
@@ -490,13 +487,14 @@ export default function OnboardingPage() {
               {!isLoading && <ArrowRight className="h-4 w-4" />}
             </button>
 
-            {step === 3 && !isLoading && (
+            {step === 3 && (
               <button
                 onClick={skipProduct}
-                className="h-12 w-full text-slate-500 hover:text-slate-700 font-bold text-sm rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
+                disabled={isLoading}
+                className="h-12 w-full text-slate-500 hover:text-slate-700 disabled:text-slate-300 disabled:cursor-not-allowed font-bold text-sm rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
               >
                 <SkipForward className="h-4 w-4" />
-                Passer cette étape
+                {isLoading ? 'Traitement...' : 'Passer cette étape'}
               </button>
             )}
           </div>
