@@ -10,7 +10,8 @@
       "Bash(npm run *)",
       "Bash(git commit -m 'feat: migration supabase pour ajouter sellerName à shop_settings *)",
       "Bash(curl -s http://localhost:3000/onboarding)",
-      "mcp__supabase__apply_migration"
+      "mcp__supabase__apply_migration",
+      "Bash(git push *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"
