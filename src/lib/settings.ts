@@ -82,7 +82,8 @@ export async function getShopSettings(slug?: string): Promise<ShopSettings> {
       .eq('slug', slug)
       .maybeSingle();
     if (error) throw new Error(`Chargement de la boutique impossible : ${error.message}`);
-    return data ? toSettings(data) : DEFAULT_SETTINGS;
+    if (!data) return DEFAULT_SETTINGS;
+    return toSettings(data);
   }
 
   // Sinon : récupère la boutique du vendeur connecté (pour le dashboard)
@@ -104,7 +105,8 @@ export async function getShopSettings(slug?: string): Promise<ShopSettings> {
   const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Chargement de la boutique impossible : ${error.message}`);
-  return data ? toSettings(data) : null;
+  if (!data) throw new Error('Aucune boutique créée. Complétez d\'abord l\'onboarding.');
+  return toSettings(data);
 }
 
 // Upload un logo dans Supabase Storage et retourne l'URL publique.
