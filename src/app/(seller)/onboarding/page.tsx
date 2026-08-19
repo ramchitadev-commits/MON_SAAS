@@ -100,10 +100,10 @@ export default function OnboardingPage() {
       // 3. Sauvegarder la boutique dans Supabase
       const saved = await saveShopSettings(settingsToSave as ShopSettings);
 
-      // 4. Ajouter le produit facultatif
+      // 4. Ajouter le produit facultatif (optionnel, ne bloque pas)
       if (productName.trim()) {
         const price = Number(productPrice);
-        if (!isNaN(price) && price >= 0) {
+        if (!isNaN(price) && price >= 0 && saved.id) {
           try {
             await createProduct(
               {
@@ -118,13 +118,17 @@ export default function OnboardingPage() {
             );
           } catch (err) {
             console.error('Création du premier produit échouée :', err);
+            // Ne pas bloquer : le produit peut être ajouté plus tard depuis le dashboard
           }
         }
       }
     } catch (err: unknown) {
       console.error('Erreur complète finalize:', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue';
-      throw new Error(errorMessage);
+      if (err instanceof Error) {
+        console.error('Stack trace:', err.stack);
+      }
+      const errorMessage = err instanceof Error ? err.message : 'Erreur inconnue lors de la finalisation';
+      throw new Error(`Erreur onboarding: ${errorMessage}`);
     }
   };
 

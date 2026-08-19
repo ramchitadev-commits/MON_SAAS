@@ -92,7 +92,16 @@ export async function getProductByIdAndSlug(
 // --- Création (nouveau produit : Supabase génère l'id et createdAt) ---
 export async function createProduct(input: ProductInput, shopId?: string): Promise<Product> {
   const parsed = productInputSchema.parse(input);
-  const shop = shopId || (await getActiveShopId());
+
+  // Utilise le shopId fourni, sinon récupère depuis la boutique active
+  let shop = shopId;
+  if (!shop) {
+    shop = await getActiveShopId();
+  }
+
+  if (!shop) {
+    throw new Error('Impossible de déterminer la boutique. Veuillez vérifier votre authentification.');
+  }
 
   const { data, error } = await supabase
     .from(TABLE)
