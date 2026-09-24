@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Phone, ArrowRight, ShieldCheck } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
+import { sendOtp } from '@/lib/otp';
 
 export default function EntrerPage() {
   const router = useRouter();
@@ -23,7 +24,7 @@ export default function EntrerPage() {
     [a, b, c, d].filter(Boolean).join(' ')
   );
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (phone.length < 9) {
       setError('Entrez un numéro de téléphone valide (9 chiffres).');
@@ -31,9 +32,15 @@ export default function EntrerPage() {
     }
 
     setLoading(true);
-    // Prototype : on "envoie" le code (aucun SMS réel) et on passe le numéro à l'écran suivant.
-    sessionStorage.setItem('doole_pending_phone', `+221 ${formatted}`);
-    setTimeout(() => router.push('/entrer/code'), 400);
+    const fullPhone = `+221${phone}`;
+    try {
+      await sendOtp(fullPhone);
+      sessionStorage.setItem('doole_pending_phone', fullPhone);
+      router.push('/entrer/code');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors de l'envoi du code.");
+      setLoading(false);
+    }
   };
 
   return (

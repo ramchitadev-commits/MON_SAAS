@@ -91,7 +91,7 @@ export async function getShopSettings(slug?: string): Promise<ShopSettings> {
   const sellerEmail = getAuthEmail();
 
   if (!sellerPhone && !sellerEmail) {
-    throw new Error('Aucun utilisateur authentifié. Veuillez vous connecter.');
+    return DEFAULT_SETTINGS;
   }
 
   let query = supabase.from(TABLE).select('*');

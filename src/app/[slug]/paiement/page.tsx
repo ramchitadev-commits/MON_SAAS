@@ -80,8 +80,7 @@ export default function PaymentPage() {
     setSelectedProvider(provider);
     setProcessing(true);
 
-    // Simulation de la transaction (2 secondes)
-    setTimeout(async () => {
+    (async () => {
       try {
         const subtotal = getCartTotal(cartItems);
         const deliveryFee = deliveryInfo.fee;
@@ -98,9 +97,11 @@ export default function PaymentPage() {
         // Détermine la date de livraison (demain si après 18h00, sinon la date fournie)
         const finalDeliveryDate = getDeliveryDateForOrder(deliveryInfo.deliveryDate);
 
-        // Crée la commande + ses articles dans Supabase (l'id est généré par la base)
-        // Auto-dispatch à un livreur disponible si possible
-        const created = await createOrderWithAutoDispatch({
+        // Importe la Server Action (doit être dynamique pour éviter les erreurs au build)
+        const { createOrderAndInitiatePayment } = await import('@/lib/actions');
+
+        // Crée la commande + lance le paiement Moneroo
+        const { checkoutUrl } = await createOrderAndInitiatePayment({
           customerName: deliveryInfo.name,
           customerPhone: `+221 ${deliveryInfo.phone}`,
           deliveryZone: deliveryInfo.zone,
@@ -111,19 +112,16 @@ export default function PaymentPage() {
           subtotal,
           deliveryFee,
           total,
-          status: 'payee', // Directement payé pour le prototype
-          paymentProvider: provider,
-          paymentRef: `${provider.toUpperCase()}-TX-${Math.floor(100000 + Math.random() * 900000)}`,
           trackingToken,
-          paidAt: new Date().toISOString(),
+          paymentProvider: provider,
           items,
         });
 
         // Vide le panier de cette boutique
         clearCart(slug);
 
-        // Redirige vers la confirmation
-        router.push(`/${slug}/confirmation/${created.id}`);
+        // Redirige vers le checkout Moneroo (Wave/Orange Money)
+        window.location.href = checkoutUrl;
       } catch (err) {
         console.error('Erreur détaillée de paiement:', err);
         setProcessing(false);
@@ -142,7 +140,7 @@ export default function PaymentPage() {
           alert(`Le paiement n'a pas pu être enregistré.\n\nDétails: ${errorMessage}`);
         }
       }
-    }, 2000);
+    })();
   };
 
   const cartSubtotal = getCartTotal(cartItems);

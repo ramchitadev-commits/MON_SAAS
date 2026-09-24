@@ -6,6 +6,7 @@ import { ArrowLeft, Check } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
 import { setAuthSession } from '@/lib/auth';
 import { getShopSettings } from '@/lib/settings';
+import { sendOtp, verifyOtp } from '@/lib/otp';
 
 const OTP_LENGTH = 6;
 
@@ -74,33 +75,39 @@ export default function CodeOtpPage() {
       return;
     }
 
+    if (!phone) return;
+
     setVerifying(true);
     try {
-      if (phone) {
-        setAuthSession(phone);
+      await verifyOtp(phone, code);
+      setAuthSession(phone);
 
-        // Vérifie si une boutique existe déjà pour ce vendeur
-        try {
-          const shop = await getShopSettings();
-          // Boutique existante → tableau de bord
-          router.replace('/accueil');
-        } catch {
-          // Pas de boutique → onboarding
-          router.replace('/onboarding');
-        }
+      // Vérifie si une boutique existe déjà pour ce vendeur
+      try {
+        await getShopSettings();
+        // Boutique existante → tableau de bord
+        router.replace('/accueil');
+      } catch {
+        // Pas de boutique → onboarding
+        router.replace('/onboarding');
       }
     } catch (err) {
       console.error('Erreur lors de la vérification:', err);
-      setError('Erreur lors de la vérification. Veuillez réessayer.');
+      setError(err instanceof Error ? err.message : 'Erreur lors de la vérification. Veuillez réessayer.');
       setVerifying(false);
     }
   };
 
-  const handleResend = () => {
-    if (countdown > 0) return;
+  const handleResend = async () => {
+    if (countdown > 0 || !phone) return;
     setCountdown(30);
     setDigits(Array(OTP_LENGTH).fill(''));
     focusInput(0);
+    try {
+      await sendOtp(phone);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors du renvoi du code.");
+    }
   };
 
   return (
@@ -152,11 +159,6 @@ export default function CodeOtpPage() {
             {error && (
               <p className="text-xs font-bold text-rose-500 text-center">{error}</p>
             )}
-
-            {/* Aide mode démo */}
-            <p className="text-center text-[11px] text-slate-400">
-              Mode démo : saisissez n&apos;importe quel code à 6 chiffres (ex&nbsp;: 123456).
-            </p>
 
             <button
               type="submit"

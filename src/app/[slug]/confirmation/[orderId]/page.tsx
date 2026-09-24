@@ -20,16 +20,37 @@ export default function OrderConfirmationPage() {
 
   useEffect(() => {
     let active = true;
-    getOrderById(orderId)
-      .then((loadedOrder) => {
-        if (active && loadedOrder) setOrder(loadedOrder);
-      })
-      .catch((err) => console.error(err))
-      .finally(() => {
-        if (active) setLoading(false);
-      });
+    let pollingInterval: NodeJS.Timeout | null = null;
+
+    const fetchOrder = async () => {
+      try {
+        const loadedOrder = await getOrderById(orderId);
+        if (active && loadedOrder) {
+          setOrder(loadedOrder);
+          // Si le paiement est confirmé (status !== en_attente), arrête le polling
+          if (loadedOrder.status !== 'en_attente') {
+            if (pollingInterval) clearInterval(pollingInterval);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+
+    // Charge la commande une première fois
+    fetchOrder();
+
+    // Si la commande est en_attente, lance un polling pour attendre la confirmation du webhook
+    const timer = setTimeout(() => {
+      if (active && order && order.status === 'en_attente') {
+        pollingInterval = setInterval(fetchOrder, 2000); // Polling toutes les 2 secondes
+      }
+    }, 1000);
+
     return () => {
       active = false;
+      if (timer) clearTimeout(timer);
+      if (pollingInterval) clearInterval(pollingInterval);
     };
   }, [orderId]);
 
@@ -89,22 +110,41 @@ export default function OrderConfirmationPage() {
     <div className="min-h-screen bg-[#FCFCFB] text-slate-900 font-sans pb-12">
       {/* En-tête de confirmation */}
       <main className="max-w-xl mx-auto px-4 py-10 space-y-6">
-        <div className="bg-white border-2 border-slate-900 rounded-2xl p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
-          <div className="flex justify-center">
-            <CheckCircle className="h-16 w-16 text-emerald-600 fill-emerald-50" />
-          </div>
-          <div className="space-y-1">
-            <h2 className="text-xl font-black text-slate-900 leading-tight">
-              Jërëjëf ! Commande validée 🎉
-            </h2>
-            <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
-              Numéro de Commande : #{order.id.slice(0, 8)}
+        {order.status === 'en_attente' ? (
+          <div className="bg-amber-50 border-2 border-amber-900 rounded-2xl p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
+            <div className="flex justify-center">
+              <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-amber-600" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-amber-900 leading-tight">
+                Paiement en cours de confirmation ⏳
+              </h2>
+              <p className="text-xs text-amber-700 font-semibold uppercase tracking-wider">
+                Numéro de Commande : #{order.id.slice(0, 8)}
+              </p>
+            </div>
+            <p className="text-sm text-amber-800 leading-relaxed max-w-sm mx-auto">
+              Veuillez confirmer la transaction sur votre téléphone. Cette page se mettra à jour automatiquement.
             </p>
           </div>
-          <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
-            Le paiement a bien été réceptionné par la vendeuse. Votre commande est enregistrée et sera traitée rapidement.
-          </p>
-        </div>
+        ) : (
+          <div className="bg-white border-2 border-slate-900 rounded-2xl p-6 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] text-center space-y-4">
+            <div className="flex justify-center">
+              <CheckCircle className="h-16 w-16 text-emerald-600 fill-emerald-50" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-xl font-black text-slate-900 leading-tight">
+                Jërëjëf ! Commande validée 🎉
+              </h2>
+              <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">
+                Numéro de Commande : #{order.id.slice(0, 8)}
+              </p>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed max-w-sm mx-auto">
+              Le paiement a bien été réceptionné par la vendeuse. Votre commande est enregistrée et sera traitée rapidement.
+            </p>
+          </div>
+        )}
 
         {/* Lien de Suivi Flat Card */}
         <div className="bg-white border-2 border-slate-900 rounded-2xl p-5 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] space-y-4">
