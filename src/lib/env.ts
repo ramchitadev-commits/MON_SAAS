@@ -37,6 +37,7 @@ const REQUIRED_PRIVATE_VARS = [
 /**
  * Valide la configuration au démarrage.
  * Appelée dans le middleware ou une route root.
+ * NE LANCE PAS D'ERREUR - affiche juste des warnings
  */
 export function validateEnv(): { isValid: boolean; errors: string[] } {
   const errors: string[] = [];
@@ -61,10 +62,11 @@ export function validateEnv(): { isValid: boolean; errors: string[] } {
   }
 
   if (errors.length > 0) {
-    console.error(
-      '\n🚨 ERREUR DE CONFIGURATION ENVIRONNEMENT:\n',
+    console.warn(
+      '\n⚠️  AVERTISSEMENT - VARIABLES D\'ENVIRONNEMENT MANQUANTES:\n',
       errors.join('\n'),
-      '\n\nVérifiez votre fichier .env.local ou configurez les variables sur Vercel.\n'
+      '\n\nL\'app fonctionnera partiellement. Certaines fonctionnalités peuvent échouer.\n' +
+      'Vérifiez votre fichier .env.local ou configurez les variables sur Vercel.\n'
     );
   } else {
     console.log('✅ Configuration environnement validée avec succès.');
