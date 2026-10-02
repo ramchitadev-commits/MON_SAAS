@@ -1,23 +1,18 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   ArrowRight,
   Store,
   Wallet,
-  Camera,
-  Upload,
-  X,
   PartyPopper,
   Copy,
   Check,
-  SkipForward,
 } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
 import { getShopSettings, saveShopSettings, ShopSettings } from '@/lib/settings';
-import { createProduct } from '@/lib/products';
 
 // Transforme un nom de boutique en slug d'URL (sans accents ni caractères spéciaux).
 const slugify = (value: string): string =>
@@ -31,9 +26,8 @@ const slugify = (value: string): string =>
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 1 → 2 → 3 → 4 (écran "prête")
+  // 1 → 2 → 3 (écran "prête")
   const [step, setStep] = useState(1);
 
   // Étape 1 — boutique
@@ -42,11 +36,6 @@ export default function OnboardingPage() {
   // Étape 2 — paiement
   const [payoutProvider, setPayoutProvider] = useState<'wave' | 'orange_money'>('wave');
   const [payoutPhone, setPayoutPhone] = useState('');
-
-  // Étape 3 — premier produit (facultatif)
-  const [productName, setProductName] = useState('');
-  const [productPrice, setProductPrice] = useState('');
-  const [productImage, setProductImage] = useState<string | null>(null);
 
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
@@ -60,19 +49,6 @@ export default function OnboardingPage() {
     if (error) setError('');
   };
 
-  const handleImage = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      alert('Veuillez sélectionner un fichier image.');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      alert("L'image est trop lourde (max 5 Mo).");
-      return;
-    }
-    const reader = new FileReader();
-    reader.onloadend = () => setProductImage(reader.result as string);
-    reader.readAsDataURL(file);
-  };
 
   // Sauvegarde la boutique + le produit éventuel, puis marque l'onboarding terminé.
   const finalize = async () => {
@@ -100,28 +76,6 @@ export default function OnboardingPage() {
       // 3. Sauvegarder la boutique dans Supabase
       const saved = await saveShopSettings(settingsToSave as ShopSettings);
 
-      // 4. Ajouter le produit facultatif (optionnel, ne bloque pas)
-      if (productName.trim()) {
-        const price = Number(productPrice);
-        if (!isNaN(price) && price >= 0 && saved.id) {
-          try {
-            await createProduct(
-              {
-                name: productName.trim(),
-                description: '',
-                price,
-                image: productImage || '',
-                isAvailable: true,
-                stock: null,
-              },
-              saved.id
-            );
-          } catch (err) {
-            console.error('Création du premier produit échouée :', err);
-            // Ne pas bloquer : le produit peut être ajouté plus tard depuis le dashboard
-          }
-        }
-      }
     } catch (err: unknown) {
       console.error('Erreur complète finalize:', err);
       if (err instanceof Error) {
@@ -145,41 +99,16 @@ export default function OnboardingPage() {
         setError('Entrez un numéro de réception valide (9 chiffres).');
         return;
       }
-      setStep(3);
-    } else if (step === 3) {
-      if (productName.trim()) {
-        const price = Number(productPrice);
-        if (isNaN(price) || price < 0) {
-          setError('Entrez un prix valide pour ce produit, ou laissez le nom vide pour passer.');
-          return;
-        }
-      }
       setIsLoading(true);
       try {
         await finalize();
-        setStep(4);
+        setStep(3);
       } catch (err: unknown) {
         console.error('Finalisation échouée :', err);
         const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la finalisation. Réessayez.';
         setError(errorMessage);
         setIsLoading(false);
       }
-    }
-  };
-
-  const skipProduct = async () => {
-    setProductName('');
-    setProductPrice('');
-    setProductImage(null);
-    setIsLoading(true);
-    try {
-      await finalize();
-      setStep(4);
-    } catch (err: unknown) {
-      console.error('Finalisation échouée :', err);
-      const errorMessage = err instanceof Error ? err.message : 'Erreur lors de la finalisation. Réessayez.';
-      setError(errorMessage);
-      setIsLoading(false);
     }
   };
 
@@ -199,7 +128,7 @@ export default function OnboardingPage() {
   };
 
   // -------- Écran final "boutique prête" --------
-  if (step === 4) {
+  if (step === 3) {
     return (
       <div className="min-h-screen bg-[#FCFCFB] flex flex-col">
         <header className="p-5 flex justify-center md:justify-start">
@@ -280,9 +209,9 @@ export default function OnboardingPage() {
       </header>
 
       <main className="flex-1 flex flex-col px-5 pb-10 max-w-sm w-full mx-auto">
-        {/* Barre de progression 3 étapes */}
+        {/* Barre de progression 2 étapes */}
         <div className="flex items-center gap-2 mt-2 mb-8">
-          {[1, 2, 3].map((s) => (
+          {[1, 2].map((s) => (
             <div
               key={s}
               className={`h-2 flex-1 rounded-full transition-colors ${s <= step ? 'bg-emerald-500' : 'bg-slate-200'
@@ -297,7 +226,7 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <StepHeader
                 icon={<Store className="h-6 w-6 text-emerald-600" />}
-                badge="Étape 1 / 3"
+                badge="Étape 1 / 2"
                 title="Nommez votre boutique"
                 subtitle="C'est le nom que vos clientes verront en haut de votre page."
               />
@@ -333,7 +262,7 @@ export default function OnboardingPage() {
             <div className="space-y-6">
               <StepHeader
                 icon={<Wallet className="h-6 w-6 text-emerald-600" />}
-                badge="Étape 2 / 3"
+                badge="Étape 2 / 2"
                 title="Où recevez-vous l'argent ?"
                 subtitle="Le paiement de vos clientes arrive directement sur ce numéro. Doolé ne touche jamais l'argent."
               />
@@ -387,94 +316,6 @@ export default function OnboardingPage() {
             </div>
           )}
 
-          {/* ÉTAPE 3 — Premier produit (facultatif) */}
-          {step === 3 && (
-            <div className="space-y-6">
-              <StepHeader
-                icon={<Camera className="h-6 w-6 text-emerald-600" />}
-                badge="Étape 3 / 3"
-                title="Ajoutez un premier produit"
-                subtitle="Facultatif — vous pourrez en ajouter d'autres plus tard depuis votre tableau de bord."
-              />
-
-              {/* Photo */}
-              {productImage ? (
-                <div className="relative w-full aspect-video rounded-xl overflow-hidden border-2 border-emerald-500">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={productImage} alt="Aperçu" className="w-full h-full object-cover" />
-                  <button
-                    type="button"
-                    onClick={() => setProductImage(null)}
-                    aria-label="Retirer la photo"
-                    className="absolute top-2 right-2 bg-black/60 hover:bg-black/80 text-white rounded-full p-1.5 transition-colors cursor-pointer"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="w-full aspect-video rounded-xl border-2 border-dashed border-slate-300 bg-white flex flex-col items-center justify-center gap-2 hover:border-emerald-400 hover:bg-emerald-50/40 transition-all cursor-pointer"
-                >
-                  <Upload className="h-6 w-6 text-slate-400" />
-                  <span className="text-sm font-bold text-slate-600">Choisir une photo</span>
-                  <span className="text-[11px] text-slate-400">JPG, PNG · Max 5 Mo</span>
-                </button>
-              )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                className="hidden"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) handleImage(f);
-                }}
-              />
-
-              <div className="space-y-1.5">
-                <label htmlFor="pname" className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Nom de l&apos;article
-                </label>
-                <input
-                  id="pname"
-                  type="text"
-                  value={productName}
-                  onChange={(e) => {
-                    setProductName(e.target.value);
-                    if (error) setError('');
-                  }}
-                  placeholder="Ex : Robe Wax Fama"
-                  className="w-full h-14 px-4 bg-white border-2 border-slate-900 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label htmlFor="pprice" className="text-xs font-bold text-slate-700 uppercase tracking-wider block">
-                  Prix
-                </label>
-                <div className="relative">
-                  <input
-                    id="pprice"
-                    type="number"
-                    min="0"
-                    value={productPrice}
-                    onChange={(e) => {
-                      setProductPrice(e.target.value);
-                      if (error) setError('');
-                    }}
-                    placeholder="15000"
-                    className={`w-full h-14 pl-4 pr-16 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
-                      }`}
-                  />
-                  <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-xs font-bold text-slate-400 pointer-events-none">
-                    FCFA
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
 
           {error && (
             <p className="text-xs font-bold text-rose-500 mt-4">{error}</p>
@@ -487,20 +328,9 @@ export default function OnboardingPage() {
               disabled={isLoading}
               className="h-14 w-full bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-bold text-sm rounded-xl border-2 border-black shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:translate-x-[1px] hover:translate-y-[1px] hover:shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] active:translate-x-[3px] active:translate-y-[3px] active:shadow-none transition-all cursor-pointer disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              {isLoading ? 'Traitement...' : step === 3 ? 'Terminer' : 'Continuer'}
+              {isLoading ? 'Traitement...' : 'Continuer'}
               {!isLoading && <ArrowRight className="h-4 w-4" />}
             </button>
-
-            {step === 3 && (
-              <button
-                onClick={skipProduct}
-                disabled={isLoading}
-                className="h-12 w-full text-slate-500 hover:text-slate-700 disabled:text-slate-300 disabled:cursor-not-allowed font-bold text-sm rounded-xl transition-colors cursor-pointer flex items-center justify-center gap-2"
-              >
-                <SkipForward className="h-4 w-4" />
-                {isLoading ? 'Traitement...' : 'Passer cette étape'}
-              </button>
-            )}
           </div>
         </div>
       </main>
