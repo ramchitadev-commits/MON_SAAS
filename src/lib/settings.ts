@@ -105,7 +105,7 @@ export async function getShopSettings(slug?: string): Promise<ShopSettings> {
   const { data, error } = await query.maybeSingle();
 
   if (error) throw new Error(`Chargement de la boutique impossible : ${error.message}`);
-  if (!data) throw new Error('Aucune boutique créée. Complétez d\'abord l\'onboarding.');
+  if (!data) return DEFAULT_SETTINGS;
   return toSettings(data);
 }
 
