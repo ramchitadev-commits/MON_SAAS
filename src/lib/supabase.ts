@@ -1,34 +1,22 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { publicEnv } from './env';
 
-// Client Supabase côté navigateur (initialisation paresseuse pour éviter les erreurs de build).
-// Les variables doivent être préfixées NEXT_PUBLIC pour être exposées au client.
-// Ce fichier s'exécute lors du build, mais on ne crée le client que lors du premier accès côté client.
+// Client Supabase côté navigateur (initialisation paresseuse).
+// Utilise publicEnv pour accéder aux variables validées.
 
 let supabaseInstance: SupabaseClient | null = null;
 
 function initializeSupabase(): SupabaseClient {
-  // Initialisation paresseuse : ne valide les variables que lors du premier accès au client
   if (!supabaseInstance) {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const { SUPABASE_URL, SUPABASE_ANON_KEY } = publicEnv;
 
-    if (!supabaseUrl || !supabaseAnonKey) {
-      console.error(
-        "Variables Supabase manquantes. Vérifiez NEXT_PUBLIC_SUPABASE_URL et " +
-          "NEXT_PUBLIC_SUPABASE_ANON_KEY dans le fichier .env.local."
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      throw new Error(
+        '❌ Variables Supabase manquantes: NEXT_PUBLIC_SUPABASE_URL ou NEXT_PUBLIC_SUPABASE_ANON_KEY'
       );
-      // Retourne un proxy qui lance une erreur si on essaie d'utiliser le client
-      return new Proxy({} as SupabaseClient, {
-        get() {
-          throw new Error(
-            "Variables Supabase manquantes. Vérifiez NEXT_PUBLIC_SUPABASE_URL et " +
-              "NEXT_PUBLIC_SUPABASE_ANON_KEY dans le fichier .env.local."
-          );
-        },
-      });
     }
 
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+    supabaseInstance = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
   }
 
   return supabaseInstance;

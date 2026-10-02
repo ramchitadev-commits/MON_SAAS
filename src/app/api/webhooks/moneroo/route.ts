@@ -93,11 +93,12 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       await incrementMonthlyOrderCount(shopId);
 
       // Envoie un SMS de confirmation à l'acheteur
+      const { publicEnv } = await import('@/lib/env');
       const confirmationMessage =
         `Doolé — Commande confirmée ✅\n` +
         `Numéro: #${orderId.slice(0, 8)}\n` +
         `Montant: ${new Intl.NumberFormat('fr-FR').format(orderData.total)} FCFA\n` +
-        `Suivi: ${process.env.NEXT_PUBLIC_APP_URL}/suivi/${orderData.trackingToken}`;
+        `Suivi: ${publicEnv.APP_URL}/suivi/${orderData.trackingToken}`;
 
       try {
         await sendSmsViaBrevo(orderData.customerPhone, confirmationMessage);

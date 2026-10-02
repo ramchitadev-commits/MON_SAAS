@@ -65,7 +65,7 @@ export async function createOrderAndInitiatePayment(
       amount: order.total,
       customerPhone: order.customerPhone,
       method: input.paymentProvider,
-      returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/${input.deliveryZone}/confirmation/${order.id}`, // TODO: slugifier la zone en URL
+      returnUrl: `${(await import('./env')).publicEnv.APP_URL}/${input.deliveryZone}/confirmation/${order.id}`, // TODO: slugifier la zone en URL
     });
 
     // 3. Met à jour la commande avec la référence de paiement Moneroo

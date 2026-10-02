@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { PaymentProviderAdapter, CreatePaymentParams, PaymentResult, WebhookPayload } from './types';
+import { getPrivateEnv } from '../env';
 
 /**
  * Adapter Moneroo : implémentation pour Wave + Orange Money via le meta-agrégateur Moneroo
@@ -11,17 +12,17 @@ export class MonerooAdapter implements PaymentProviderAdapter {
   private baseUrl = 'https://api.moneroo.io';
 
   constructor(apiKey?: string, webhookSecret?: string) {
-    this.apiKey = apiKey || process.env.MONEROO_API_KEY || '';
-    this.webhookSecret = webhookSecret || process.env.MONEROO_WEBHOOK_SECRET || '';
+    this.apiKey = apiKey || getPrivateEnv('MONEROO_API_KEY');
+    this.webhookSecret = webhookSecret || getPrivateEnv('MONEROO_WEBHOOK_SECRET');
 
     if (!this.apiKey) {
       throw new Error(
-        'MONEROO_API_KEY manquante. Vérifiez votre configuration .env.local ou Vercel.'
+        '❌ MONEROO_API_KEY manquante. Configurez-la sur Vercel.'
       );
     }
     if (!this.webhookSecret) {
       throw new Error(
-        'MONEROO_WEBHOOK_SECRET manquée. Vérifiez votre configuration .env.local ou Vercel.'
+        '❌ MONEROO_WEBHOOK_SECRET manquée. Configurez-la sur Vercel.'
       );
     }
   }

@@ -2,12 +2,16 @@
  * Service SMS centralisé via Brevo (utilisé par OTP et dispatch livreur)
  */
 
+import { getPrivateEnv, privateEnv } from '../env';
+
 export async function sendSmsViaBrevo(phone: string, message: string): Promise<void> {
-  const apiKey = process.env.BREVO_API_KEY;
-  const sender = process.env.BREVO_SMS_SENDER || 'Doole';
+  const apiKey = getPrivateEnv('BREVO_API_KEY');
+  const sender = privateEnv.BREVO_SMS_SENDER;
 
   if (!apiKey) {
-    throw new Error('BREVO_API_KEY manquante. Vérifiez la configuration du serveur.');
+    throw new Error(
+      '❌ BREVO_API_KEY manquante. Configurez-la sur Vercel (Production/Preview/Development).'
+    );
   }
 
   const response = await fetch('https://api.brevo.com/v3/transactionalSMS/sms', {

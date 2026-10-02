@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { validateEnv } from '@/lib/env';
+
+// Valide la configuration au démarrage
+validateEnv();
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
