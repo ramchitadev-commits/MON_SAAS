@@ -76,11 +76,21 @@ export default function CartPage() {
                   {/* Miniature Image */}
                   <div className="h-16 w-16 bg-slate-100 border border-slate-200 rounded-lg overflow-hidden shrink-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={item.image || 'https://images.unsplash.com/photo-1544005313-94ddf0286df2'}
-                      alt={item.name}
-                      className="object-cover w-full h-full"
-                    />
+                    {item.image ? (
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="object-cover w-full h-full"
+                        onError={(e) => {
+                          console.warn('[CART IMAGE] Failed to load image:', item.image);
+                          (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1544005313-94ddf0286df2';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-slate-200">
+                        <span className="text-[10px] text-slate-500">Pas d'image</span>
+                      </div>
+                    )}
                   </div>
 
                   {/* Infos & Contrôles */}

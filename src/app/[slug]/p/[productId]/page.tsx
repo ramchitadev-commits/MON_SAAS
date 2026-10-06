@@ -47,8 +47,20 @@ export default function ProductDetailPage() {
 
   const handleAddToCart = () => {
     if (!product) return;
-    addToCart(slug, product.id, product.name, product.price, product.image, quantity);
-    
+
+    // Vérifie que l'image est correcte avant d'ajouter
+    const imageToAdd = product.image || '';
+    console.log('[CART] Adding product:', {
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: imageToAdd,
+      imageLength: imageToAdd.length,
+      quantity,
+    });
+
+    addToCart(slug, product.id, product.name, product.price, imageToAdd, quantity);
+
     setAdded(true);
     setTimeout(() => {
       setAdded(false);

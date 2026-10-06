@@ -12,7 +12,9 @@
       "Bash(curl -s http://localhost:3000/onboarding)",
       "mcp__supabase__apply_migration",
       "Bash(git push *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git commit -m 'fix: améliorer gestion erreurs env - ne pas crash si variables manquent *)"
     ],
     "additionalDirectories": [
       "c:\\Users\\hp\\.claude\\projects\\c--Users-hp-Desktop-Mon-projet-saas-doolee\\memory"
