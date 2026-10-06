@@ -32,10 +32,16 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     if (!mounted) return;
 
     updateBadge();
-    const loadStoreName = () =>
-      getShopSettings()
-        .then((s) => setStoreName(s.name))
-        .catch((err) => console.error('Erreur chargement boutique:', err));
+    const loadStoreName = async () => {
+      try {
+        const s = await getShopSettings();
+        setStoreName(s.name);
+      } catch (err) {
+        console.error('Erreur chargement boutique:', err);
+        // Utilise le nom par défaut en cas d'erreur
+        setStoreName('Boutique de Fatou');
+      }
+    };
     loadStoreName();
 
     // Ecoute les changements de statut des commandes
