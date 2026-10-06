@@ -101,9 +101,13 @@ export default function PaymentPage() {
         const { createOrderAndInitiatePayment } = await import('@/lib/actions');
 
         // Crée la commande + lance le paiement Moneroo
+        // Format du téléphone: +221 + 9 chiffres (pas d'espaces)
+        const cleanPhone = deliveryInfo.phone.replace(/\s/g, ''); // Enlève tous les espaces
+        const formattedPhone = `+221${cleanPhone}`;
+
         const { checkoutUrl } = await createOrderAndInitiatePayment({
           customerName: deliveryInfo.name,
-          customerPhone: `+221 ${deliveryInfo.phone}`,
+          customerPhone: formattedPhone,
           deliveryZone: deliveryInfo.zone,
           deliveryAddress: deliveryInfo.address,
           deliveryNote: deliveryInfo.note || null,
