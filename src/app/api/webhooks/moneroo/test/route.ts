@@ -7,10 +7,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
-import { getMonerooAdapter } from '@/lib/payment/moneroo';
 import { getAdminSupabaseClient } from '@/lib/supabase/admin';
-import { updateOrder } from '@/lib/orders';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   // ⚠️ Vérifie qu'on est en développement/sandbox
@@ -63,8 +60,16 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
     // Met à jour le statut si paiement confirmé
     if (status === 'completed' || status === 'success') {
-      await updateOrder(orders.id, { status: 'payee' });
-      console.log('[TEST WEBHOOK] Order updated to payee:', orders.id);
+      const { error: updateError } = await admin
+        .from('orders')
+        .update({ status: 'payee' })
+        .eq('id', orders.id);
+
+      if (updateError) {
+        console.error('[TEST WEBHOOK] Update failed:', updateError);
+      } else {
+        console.log('[TEST WEBHOOK] Order updated to payee:', orders.id);
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Test webhook processed' }, { status: 200 });
