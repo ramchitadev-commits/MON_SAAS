@@ -40,42 +40,50 @@ const REQUIRED_PRIVATE_VARS = [
  * NE LANCE PAS D'ERREUR - affiche juste des warnings
  */
 export function validateEnv(): { isValid: boolean; errors: string[] } {
-  const errors: string[] = [];
+  try {
+    const errors: string[] = [];
 
-  // Vérifie les variables publiques
-  REQUIRED_PUBLIC_VARS.forEach((varName) => {
-    const envKey = `NEXT_PUBLIC_${varName.replace('NEXT_PUBLIC_', '')}`;
-    const value = process.env[envKey];
-    if (!value || value.trim() === '') {
-      errors.push(`❌ ${envKey} manquante ou vide`);
-    }
-  });
+    // Vérifie les variables publiques
+    REQUIRED_PUBLIC_VARS.forEach((varName) => {
+      const envKey = varName.startsWith('NEXT_PUBLIC_')
+        ? varName
+        : `NEXT_PUBLIC_${varName}`;
+      const value = process.env[envKey];
+      if (!value || value.trim() === '') {
+        errors.push(`❌ ${envKey} manquante ou vide`);
+      }
+    });
 
-  // Vérifie les variables privées (côté serveur seulement)
-  if (typeof window === 'undefined') {
+    // Vérifie les variables privées (serveur uniquement, sans vérification window)
     REQUIRED_PRIVATE_VARS.forEach((varName) => {
       const value = process.env[varName];
       if (!value || value.trim() === '') {
         errors.push(`❌ ${varName} manquante ou vide (serveur seulement)`);
       }
     });
-  }
 
-  if (errors.length > 0) {
-    console.warn(
-      '\n⚠️  AVERTISSEMENT - VARIABLES D\'ENVIRONNEMENT MANQUANTES:\n',
-      errors.join('\n'),
-      '\n\nL\'app fonctionnera partiellement. Certaines fonctionnalités peuvent échouer.\n' +
-      'Vérifiez votre fichier .env.local ou configurez les variables sur Vercel.\n'
-    );
-  } else {
-    console.log('✅ Configuration environnement validée avec succès.');
-  }
+    if (errors.length > 0) {
+      console.warn(
+        '\n⚠️  AVERTISSEMENT - VARIABLES D\'ENVIRONNEMENT MANQUANTES:\n',
+        errors.join('\n'),
+        '\n\nL\'app fonctionnera partiellement. Certaines fonctionnalités peuvent échouer.\n' +
+        'Vérifiez votre fichier .env.local ou configurez les variables sur Vercel.\n'
+      );
+    } else {
+      console.log('✅ Configuration environnement validée avec succès.');
+    }
 
-  return {
-    isValid: errors.length === 0,
-    errors,
-  };
+    return {
+      isValid: errors.length === 0,
+      errors,
+    };
+  } catch (err) {
+    console.error('❌ Erreur lors de la validation des env vars:', err);
+    return {
+      isValid: false,
+      errors: [String(err)],
+    };
+  }
 }
 
 /**
