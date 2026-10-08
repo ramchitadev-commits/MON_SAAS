@@ -55,7 +55,10 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const updateBadge = () => {
     countActiveOrders()
       .then(setBadgeCount)
-      .catch((err) => console.error(err));
+      .catch((err) => {
+        console.error('Erreur comptage commandes:', err);
+        setBadgeCount(0); // Utilise 0 en cas d'erreur
+      });
   };
 
   const handleLogout = () => {
