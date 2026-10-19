@@ -4,7 +4,7 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { CheckCircle, Share2, Copy, Check, ArrowRight, Calendar } from 'lucide-react';
-import { getOrderById } from '@/lib/orders';
+import { getPublicOrder } from '@/lib/orders';
 import { Order } from '@/types';
 import { DooleLogo } from '@/components/logos';
 
@@ -24,7 +24,7 @@ export default function OrderConfirmationPage() {
 
     const fetchOrder = async () => {
       try {
-        const loadedOrder = await getOrderById(orderId);
+        const loadedOrder = await getPublicOrder(orderId, slug);
         if (active && loadedOrder) {
           setOrder(loadedOrder);
           // Si le paiement est confirmé (status !== en_attente), arrête le polling
@@ -43,7 +43,7 @@ export default function OrderConfirmationPage() {
     // Si la commande est en_attente, lance un polling pour attendre la confirmation du webhook
     const timer = setTimeout(() => {
       if (active && order && order.status === 'en_attente') {
-        pollingInterval = setInterval(fetchOrder, 2000); // Polling toutes les 2 secondes
+        pollingInterval = setInterval(fetchOrder, 10000);
       }
     }, 1000);
 
@@ -52,7 +52,7 @@ export default function OrderConfirmationPage() {
       if (timer) clearTimeout(timer);
       if (pollingInterval) clearInterval(pollingInterval);
     };
-  }, [orderId]);
+  }, [orderId, slug]);
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat('fr-FR').format(amount) + ' FCFA';

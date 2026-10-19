@@ -1,181 +1,182 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMonerooAdapter } from '@/lib/payment/moneroo';
-import { getAdminSupabaseClient } from '@/lib/supabase/admin';
-import { getOrderById, updateOrder } from '@/lib/orders';
-import { getCouriers } from '@/lib/couriers';
-import { canAutoDispatch, incrementMonthlyOrderCount, getShopPlan } from '@/lib/subscriptions';
+import { adminDb } from '@/lib/server/db';
+import { releaseStock } from '@/lib/server/inventory';
+import { canAutoDispatch, getShopPlan, incrementMonthlyOrderCount } from '@/lib/subscriptions';
 import { notifyCourier } from '@/lib/notify/courier';
 import { sendSmsViaBrevo } from '@/lib/notify/sms';
+import { publicEnv } from '@/lib/env';
+import { Courier, Order } from '@/types';
 
-/**
- * Webhook Moneroo — point d'entrée pour les confirmations de paiement
- * Source de vérité : jamais le client ne doit marquer une commande comme payée,
- * seul le webhook Moneroo peut le faire.
- */
+const PAID_STATUSES = new Set(['payee', 'a_envoyer', 'en_route', 'livre']);
+
 export async function POST(request: NextRequest): Promise<NextResponse> {
+  const rawBody = await request.text();
+  const signatureHeader = request.headers.get('x-moneroo-signature') || '';
+  const moneroo = getMonerooAdapter();
+
+  if (!moneroo.verifySignature(rawBody, signatureHeader)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  let providerRef = '';
+  let status: 'success' | 'failed' | 'pending' = 'pending';
+  let amount = 0;
   try {
-    // 1. Récupère le raw body (nécessaire pour vérifier la signature)
-    const rawBody = await request.text();
-    const signatureHeader = request.headers.get('x-moneroo-signature') || '';
+    const event = moneroo.parseWebhookEvent(rawBody);
+    providerRef = event.providerRef;
+    status = event.status;
+    amount = Number(event.amount);
+  } catch (error) {
+    console.error('[WEBHOOK] payload illisible', error);
+    return NextResponse.json({ error: 'Invalid payload' }, { status: 400 });
+  }
 
-    // 2. Initialise l'adapter Moneroo
-    const moneroo = getMonerooAdapter();
-
-    // 3. Vérifie la signature
-    if (!moneroo.verifySignature(rawBody, signatureHeader)) {
-      console.error('[WEBHOOK] Signature de Moneroo invalide');
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-    }
-
-    // 4. Parse l'événement
-    const webhookEvent = moneroo.parseWebhookEvent(rawBody);
-    const { providerRef, status, amount } = webhookEvent;
-
-    console.log('[WEBHOOK] Événement Moneroo reçu:', { providerRef, status, amount });
-
-    const admin = getAdminSupabaseClient();
-
-    // 5. Enregistre l'événement dans la table payments (idempotence via UNIQUE constraint)
-    // Si c'est un doublon (même provider + providerRef), l'insert échoue silencieusement
-    const { error: paymentInsertError } = await admin
-      .from('payments')
-      .insert({
-        provider: 'moneroo',
-        providerRef,
-        amount,
-        status,
-        raw: JSON.parse(rawBody),
-      })
-      .maybeSingle();
-
-    if (paymentInsertError) {
-      // Vérifie si c'est un doublon (erreur UNIQUE constraint) ou une vraie erreur
-      if (paymentInsertError.code === '23505') {
-        // Doublon — c'est un rejeu du webhook, répond 200 sans retraiter
-        console.log('[WEBHOOK] Doublon détecté (même providerRef), ignore');
-        return NextResponse.json({ status: 'ok', message: 'Doublon ignoré' }, { status: 200 });
-      }
-      throw paymentInsertError;
-    }
-
-    // 6. Récupère la commande associée via le paymentRef
-    const { data: orderData, error: orderError } = await admin
+  try {
+    const db = adminDb();
+    const { data: orderData, error: orderError } = await db
       .from('orders')
-      .select('*')
+      .select('*, items:order_items(*)')
       .eq('paymentRef', providerRef)
       .maybeSingle();
 
     if (orderError) {
-      throw new Error(`Erreur lors de la récupération de la commande: ${orderError.message}`);
+      console.error('[WEBHOOK] commande', orderError.message);
+      return NextResponse.json({ error: 'Order lookup failed' }, { status: 500 });
+    }
+    if (!orderData) return NextResponse.json({ status: 'ignored' }, { status: 200 });
+
+    const order = orderData as Order;
+    if (!Number.isFinite(amount) || amount !== order.total) {
+      console.error('[WEBHOOK] montant inattendu', { providerRef, amount, total: order.total });
+      return NextResponse.json({ error: 'Amount mismatch' }, { status: 400 });
     }
 
-    if (!orderData) {
-      console.warn('[WEBHOOK] Aucune commande trouvée pour', providerRef);
-      // Commande déjà traitée ou références incohérentes — répond 200 pour Moneroo
-      return NextResponse.json({ status: 'ok', message: 'Commande non trouvée' }, { status: 200 });
+    if (status === 'success' && PAID_STATUSES.has(order.status)) {
+      return NextResponse.json({ status: 'ok' }, { status: 200 });
     }
+    if (status === 'failed' && order.status === 'annulee') {
+      return NextResponse.json({ status: 'ok' }, { status: 200 });
+    }
+    if (status === 'pending') return NextResponse.json({ status: 'ok' }, { status: 200 });
 
-    const orderId = orderData.id as string;
-    const shopId = orderData.shopId as string;
-
-    // 7. Traite selon le statut du paiement
     if (status === 'success') {
-      // Met à jour la commande
-      await admin
+      const { data: updated, error: updateError } = await db
         .from('orders')
-        .update({
-          status: 'payee',
-          paidAt: new Date().toISOString(),
-        })
-        .eq('id', orderId);
+        .update({ status: 'payee', paidAt: new Date().toISOString() })
+        .eq('id', order.id)
+        .eq('status', 'en_attente')
+        .select('id')
+        .maybeSingle();
 
-      // Incrémente le compteur de commandes du mois
-      await incrementMonthlyOrderCount(shopId);
+      if (updateError) {
+        console.error('[WEBHOOK] confirmation', updateError.message);
+        return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+      }
+      if (!updated) return NextResponse.json({ status: 'ok' }, { status: 200 });
 
-      // Envoie un SMS de confirmation à l'acheteur
-      const { publicEnv } = await import('@/lib/env');
-      const confirmationMessage =
-        `Doolé — Commande confirmée ✅\n` +
-        `Numéro: #${orderId.slice(0, 8)}\n` +
-        `Montant: ${new Intl.NumberFormat('fr-FR').format(orderData.total)} FCFA\n` +
-        `Suivi: ${publicEnv.APP_URL}/suivi/${orderData.trackingToken}`;
-
-      try {
-        await sendSmsViaBrevo(orderData.customerPhone, confirmationMessage);
-      } catch (smsError) {
-        // Log l'erreur mais ne bloque pas le traitement
-        console.error('[WEBHOOK] Erreur lors de l\'envoi du SMS acheteur:', smsError);
+      if (order.shopId) {
+        await incrementMonthlyOrderCount(order.shopId);
+        await dispatchIfAllowed(order);
       }
 
-      // 8. Applique la logique de dispatch conditionnée au plan
       try {
-        const plan = await getShopPlan(shopId);
-
-        if (canAutoDispatch(plan)) {
-          // Récupère les livreurs de la boutique
-          const couriers = await getCouriers();
-          const defaultCourier = couriers.find((c) => c.isDefault);
-
-          if (defaultCourier) {
-            // Charge la commande avec ses relations
-            const fullOrder = await getOrderById(orderId);
-            if (fullOrder) {
-              // Dispatch automatique
-              fullOrder.courierId = defaultCourier.id;
-              fullOrder.dispatchedAt = new Date().toISOString();
-              fullOrder.status = 'en_route'; // Change le statut
-
-              await updateOrder(fullOrder);
-
-              // Envoie la notification au livreur
-              try {
-                await notifyCourier(defaultCourier, fullOrder);
-              } catch (notifyError) {
-                console.error('[WEBHOOK] Erreur lors de la notification au livreur:', notifyError);
-              }
-            }
-          } else {
-            console.warn('[WEBHOOK] Aucun livreur par défaut pour la boutique', shopId);
-          }
-        } else {
-          console.log(`[WEBHOOK] Plan ${plan} n'autorise pas le dispatch auto`);
-        }
-      } catch (dispatchError) {
-        // Log l'erreur mais ne bloque pas le traitement
-        console.error('[WEBHOOK] Erreur lors du dispatch automatique:', dispatchError);
-      }
-    } else if (status === 'failed') {
-      // Annule la commande
-      await admin
-        .from('orders')
-        .update({
-          status: 'annulee',
-        })
-        .eq('id', orderId);
-
-      // Envoie un SMS d'annulation à l'acheteur
-      const cancelMessage =
-        `Doolé — Paiement échoué ❌\n` +
-        `Commande #${orderId.slice(0, 8)}\n` +
-        `Veuillez réessayer ou contacter le vendeur.`;
-
-      try {
-        await sendSmsViaBrevo(orderData.customerPhone, cancelMessage);
+        await sendSmsViaBrevo(
+          order.customerPhone,
+          `Doolé — Commande confirmée\nNuméro: #${order.id.slice(0, 8)}\nMontant: ${new Intl.NumberFormat('fr-FR').format(order.total)} FCFA\nSuivi: ${publicEnv.APP_URL}/suivi/${order.trackingToken}`
+        );
       } catch (smsError) {
-        console.error('[WEBHOOK] Erreur lors de l\'envoi du SMS acheteur:', smsError);
+        console.error('[WEBHOOK] SMS acheteur', smsError);
       }
     }
-    // Si pending, ne fait rien (attend la confirmation finale)
 
-    // 9. Répond toujours 200 rapidement (même en cas d'erreur métier)
-    // Moneroo interprète tout non-2xx comme une erreur de livraison et rejouera
+    if (status === 'failed') {
+      const { data: cancelled, error: cancelError } = await db
+        .from('orders')
+        .update({ status: 'annulee' })
+        .eq('id', order.id)
+        .eq('status', 'en_attente')
+        .select('id')
+        .maybeSingle();
+
+      if (cancelError) {
+        console.error('[WEBHOOK] annulation', cancelError.message);
+        return NextResponse.json({ error: 'Update failed' }, { status: 500 });
+      }
+      if (cancelled) {
+        await releaseStock(
+          (order.items ?? [])
+            .filter((item) => item.productId)
+            .map((item) => ({ productId: item.productId as string, quantity: item.quantity }))
+        );
+        try {
+          await sendSmsViaBrevo(
+            order.customerPhone,
+            `Doolé — Paiement échoué\nCommande #${order.id.slice(0, 8)}\nVeuillez réessayer ou contacter le vendeur.`
+          );
+        } catch (smsError) {
+          console.error('[WEBHOOK] SMS annulation', smsError);
+        }
+      }
+    }
+
+    const { error: paymentError } = await db.from('payments').insert({
+      orderId: order.id,
+      provider: 'moneroo',
+      providerRef,
+      amount,
+      status,
+      raw: JSON.parse(rawBody),
+    });
+    if (paymentError && paymentError.code !== '23505') {
+      console.error('[WEBHOOK] journal paiement', paymentError.message);
+      return NextResponse.json({ error: 'Payment log failed' }, { status: 500 });
+    }
+
     return NextResponse.json({ status: 'ok' }, { status: 200 });
   } catch (error) {
-    console.error('[WEBHOOK] Erreur lors du traitement:', error);
-    // Répond toujours 200 pour ne pas bloquer Moneroo
-    return NextResponse.json(
-      { status: 'ok', error: error instanceof Error ? error.message : 'Erreur inconnue' },
-      { status: 200 }
-    );
+    console.error('[WEBHOOK] traitement', error);
+    return NextResponse.json({ error: 'Processing failed' }, { status: 500 });
+  }
+}
+
+async function dispatchIfAllowed(order: Order): Promise<void> {
+  if (!order.shopId) return;
+  const plan = await getShopPlan(order.shopId);
+  if (!canAutoDispatch(plan)) return;
+
+  const { data: courier, error } = await adminDb()
+    .from('couriers')
+    .select('*')
+    .eq('shopId', order.shopId)
+    .eq('isDefault', true)
+    .maybeSingle();
+
+  if (error || !courier) {
+    console.warn('[WEBHOOK] aucun livreur par défaut', order.shopId);
+    return;
+  }
+
+  const dispatchedAt = new Date().toISOString();
+  const { error: updateError } = await adminDb()
+    .from('orders')
+    .update({ courierId: courier.id, dispatchedAt, status: 'en_route' })
+    .eq('id', order.id)
+    .eq('shopId', order.shopId);
+
+  if (updateError) {
+    console.error('[WEBHOOK] dispatch', updateError.message);
+    return;
+  }
+
+  try {
+    await notifyCourier(courier as Courier, {
+      ...order,
+      courierId: courier.id as string,
+      dispatchedAt,
+      status: 'en_route',
+    });
+  } catch (notifyError) {
+    console.error('[WEBHOOK] notification livreur', notifyError);
   }
 }

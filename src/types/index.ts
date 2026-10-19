@@ -1,4 +1,20 @@
 export type OrderStatus = 'en_attente' | 'payee' | 'a_envoyer' | 'en_route' | 'livre' | 'annulee';
+export type Plan = 'free' | 'starter' | 'pro';
+
+export interface ShopSettings {
+  id?: string;
+  slug?: string;
+  name: string;
+  description: string;
+  payoutPhone: string;
+  payoutProvider: 'wave' | 'orange_money';
+  deliveryFee: number;
+  logo?: string | null;
+  cutoffTime?: string | null;
+  sellerName?: string;
+  sellerPhone?: string | null;
+  sellerEmail?: string | null;
+}
 export type PaymentProvider = 'wave' | 'orange_money';
 export type CourierChannel = 'sms' | 'whatsapp';
 
@@ -33,6 +49,7 @@ export interface OrderItem {
 
 export interface Order {
   id: string;
+  shopId?: string;
   customerName: string;
   customerPhone: string;
   deliveryZone: string;

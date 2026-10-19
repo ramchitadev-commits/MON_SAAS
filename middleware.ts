@@ -1,61 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { validateEnv } from '@/lib/env';
+import { SESSION_COOKIE, verifySession } from '@/lib/session-token';
 
-// Valide la configuration au démarrage
-validateEnv();
+const SELLER_PREFIXES = [
+  '/accueil',
+  '/commandes',
+  '/produits',
+  '/boutique',
+  '/livreurs',
+  '/abonnement',
+  '/onboarding',
+];
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const needsAuth = SELLER_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
 
-  // Routes publiques qui doivent rester accessibles à TOUS les visiteurs
-  // sans redirection ou protection
-  const publicRoutes = [
-    '/suivi',      // Suivi de commande (public)
-    '/tarifs',     // Page tarifs (public)
-    '/api',        // API endpoints (peuvent être protégées mais pas ici)
-  ];
+  if (!needsAuth) return NextResponse.next();
 
-  // Routes du vendeur (group seller) qui nécessitent d'être dans le dashboard
-  const sellerRoutes = [
-    '/accueil',
-    '/commandes',
-    '/produits',
-    '/boutique',
-    '/livreurs',
-    '/entrer',
-    '/onboarding',
-  ];
+  const session = await verifySession(request.cookies.get(SESSION_COOKIE)?.value);
+  if (session) return NextResponse.next();
 
-  // Vérifier si c'est une route publique
-  const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-
-  if (isPublicRoute) {
-    // Routes publiques : ne pas toucher, laisser passer
-    return NextResponse.next();
-  }
-
-  // Vérifier si c'est une route du vendeur (seller group)
-  const isSellerRoute = sellerRoutes.some(route => pathname.startsWith(route));
-
-  if (isSellerRoute) {
-    // Route seller : laisser passer (elle s'affichera avec le layout seller)
-    return NextResponse.next();
-  }
-
-  // Si aucun des patterns ci-dessus, c'est probablement une route [slug] client
-  // Comme /boutique-de-fatou, /boutique-de-fatou/panier, etc.
-  // Laisser passer sans modification
-  return NextResponse.next();
+  const url = request.nextUrl.clone();
+  url.pathname = '/entrer';
+  url.search = '';
+  return NextResponse.redirect(url);
 }
 
 export const config = {
-  matcher: [
-    /*
-     * Appliquer le middleware à tous les chemins SAUF:
-     * - _next (Next.js internals)
-     * - favicon.ico
-     * - fichiers statiques
-     */
-    '/((?!_next/static|_next/image|favicon.ico|public).*)',
-  ],
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|public).*)'],
 };

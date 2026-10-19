@@ -6,10 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "type-check": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/security.test.ts"
   },
   "optionalDependencies": {
-    "@next/swc-win32-x64-msvc": "^16.2.8"
+    "@next/swc-win32-x64-msvc": "^16.2.8",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.2",

@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings, Save, CheckCircle, Upload, Clock } from 'lucide-react';
-import { getShopSettings, saveShopSettings, uploadLogo, ShopSettings } from '@/lib/settings';
+import { getShopSettings, saveShopSettings, uploadLogo } from '@/lib/settings';
+import { ShopSettings } from '@/types';
 
 export default function BoutiqueSettingsPage() {
   const router = useRouter();

@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Check, X, ArrowRight } from 'lucide-react';
-import type { Plan } from '@/lib/subscriptions';
+import type { Plan } from '@/types';
 import { fetchCurrentPlan } from './actions';
 
 const PLANS = [

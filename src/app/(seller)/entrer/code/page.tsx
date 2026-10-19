@@ -4,8 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Check } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { setAuthSession } from '@/lib/auth';
-import { getShopSettings } from '@/lib/settings';
+import { sellerHasShop } from '@/lib/settings';
 import { sendOtp, verifyOtp } from '@/lib/otp';
 
 const OTP_LENGTH = 6;
@@ -15,6 +14,7 @@ export default function CodeOtpPage() {
   const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
 
   const [phone, setPhone] = useState<string | null>(null);
+  const [devCode, setDevCode] = useState<string | null>(null);
   const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [error, setError] = useState('');
   const [verifying, setVerifying] = useState(false);
@@ -28,6 +28,7 @@ export default function CodeOtpPage() {
       return;
     }
     setPhone(pending);
+    setDevCode(sessionStorage.getItem('doole_dev_code'));
     inputsRef.current[0]?.focus();
   }, [router]);
 
@@ -80,17 +81,9 @@ export default function CodeOtpPage() {
     setVerifying(true);
     try {
       await verifyOtp(phone, code);
-      setAuthSession(phone);
-
-      // Vérifie si une boutique existe déjà pour ce vendeur
-      try {
-        await getShopSettings();
-        // Boutique existante → tableau de bord
-        router.replace('/accueil');
-      } catch {
-        // Pas de boutique → onboarding
-        router.replace('/onboarding');
-      }
+      sessionStorage.removeItem('doole_dev_code');
+      const hasShop = await sellerHasShop();
+      router.replace(hasShop ? '/accueil' : '/onboarding');
     } catch (err) {
       console.error('Erreur lors de la vérification:', err);
       setError(err instanceof Error ? err.message : 'Erreur lors de la vérification. Veuillez réessayer.');
@@ -104,7 +97,11 @@ export default function CodeOtpPage() {
     setDigits(Array(OTP_LENGTH).fill(''));
     focusInput(0);
     try {
-      await sendOtp(phone);
+      const result = await sendOtp(phone);
+      if (result.devCode) {
+        sessionStorage.setItem('doole_dev_code', result.devCode);
+        setDevCode(result.devCode);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors du renvoi du code.");
     }
@@ -133,6 +130,11 @@ export default function CodeOtpPage() {
               Nous avons envoyé un code à 6 chiffres au{' '}
               <span className="font-bold text-slate-700">{phone ?? '…'}</span>.
             </p>
+            {devCode && (
+              <p className="text-sm font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-3 py-2">
+                SMS en attente. Code de test : {devCode}
+              </p>
+            )}
           </div>
 
           <form onSubmit={verify} className="space-y-5">
@@ -149,7 +151,7 @@ export default function CodeOtpPage() {
                   value={digit}
                   onChange={(e) => handleChange(i, e.target.value)}
                   onKeyDown={(e) => handleKeyDown(i, e)}
-                  className={`h-14 w-12 text-center text-xl font-black bg-white border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
+                  className={`h-14 w-12 text-center text-xl font-black text-slate-900 bg-white border-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
                     error ? 'border-rose-500' : digit ? 'border-emerald-500' : 'border-slate-900'
                   }`}
                 />

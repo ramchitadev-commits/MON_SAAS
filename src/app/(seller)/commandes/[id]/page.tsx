@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { getOrderById, updateOrder } from '@/lib/orders';
 import { getCouriers } from '@/lib/couriers';
+import { getShopSettings } from '@/lib/settings';
 import { WaveLogo, OrangeMoneyLogo } from '@/components/logos';
 import { Order, Courier, OrderStatus } from '@/types';
 
@@ -32,9 +33,16 @@ export default function DetailCommandePage() {
   const [selectedCourierId, setSelectedCourierId] = useState('');
   const [showDispatchModal, setShowDispatchModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [shopName, setShopName] = useState('votre boutique');
 
   useEffect(() => {
     let active = true;
+    getShopSettings()
+      .then((settings) => {
+        if (active) setShopName(settings.name);
+      })
+      .catch((err) => console.error(err));
+
     Promise.all([getOrderById(orderId), getCouriers()])
       .then(([loadedOrder, loadedCouriers]) => {
         if (!active) return;
@@ -207,7 +215,7 @@ export default function DetailCommandePage() {
                   Appeler
                 </a>
                 <a
-                  href={`https://wa.me/${order.customerPhone.replace(/[\s+]/g, '')}?text=Bonjour%20${encodeURIComponent(order.customerName)},%20c'est%20la%20boutique%20de%20Fatou.%20Votre%20commande%20Doolé%20est%20prête.`}
+                  href={`https://wa.me/${order.customerPhone.replace(/[\s+]/g, '')}?text=${encodeURIComponent(`Bonjour ${order.customerName}, c'est ${shopName}. Votre commande Doolé est prête.`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex-1 sm:flex-initial inline-flex items-center justify-center gap-2 bg-[#25D366] hover:bg-[#20ba56] text-white font-bold text-xs px-4 py-2.5 rounded-xl transition-all shadow-sm"

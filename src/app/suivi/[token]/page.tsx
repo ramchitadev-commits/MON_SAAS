@@ -4,9 +4,8 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Clock, CheckCircle, Truck, Package, MessageSquare, Phone } from 'lucide-react';
-import { getOrderByToken } from '@/lib/orders';
-import { getCouriers } from '@/lib/couriers';
-import { Order, Courier } from '@/types';
+import { getTrackingOrder } from '@/lib/orders';
+import { Order } from '@/types';
 import { DooleLogo } from '@/components/logos';
 
 export default function OrderTrackingPage() {
@@ -15,7 +14,7 @@ export default function OrderTrackingPage() {
   const token = params.token as string;
 
   const [order, setOrder] = useState<Order | null>(null);
-  const [couriers, setCouriers] = useState<Courier[]>([]);
+  const [courier, setCourier] = useState<{ name: string; phone: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,18 +22,19 @@ export default function OrderTrackingPage() {
 
     // Rafraîchissement de la commande par son token
     const loadOrder = () =>
-      getOrderByToken(token)
+      getTrackingOrder(token)
         .then((found) => {
-          if (active && found) setOrder(found);
+          if (!active || !found) return;
+          setOrder(found.order);
+          setCourier(found.courier);
         })
         .catch((err) => console.error(err));
 
-    // Chargement initial : commande + livreurs
-    Promise.all([getOrderByToken(token), getCouriers()])
-      .then(([found, loadedCouriers]) => {
-        if (!active) return;
-        if (found) setOrder(found);
-        setCouriers(loadedCouriers);
+    getTrackingOrder(token)
+      .then((found) => {
+        if (!active || !found) return;
+        setOrder(found.order);
+        setCourier(found.courier);
       })
       .catch((err) => console.error(err))
       .finally(() => {
@@ -42,7 +42,7 @@ export default function OrderTrackingPage() {
       });
 
     // Rafraîchit toutes les 3 secondes pour simuler le temps réel
-    const interval = setInterval(loadOrder, 3000);
+    const interval = setInterval(loadOrder, 15000);
 
     return () => {
       active = false;
@@ -89,7 +89,7 @@ export default function OrderTrackingPage() {
     );
   }
 
-  const assignedCourier = couriers.find((c) => c.id === order.courierId);
+  const assignedCourier = courier;
 
   // Construction des étapes de la frise chronologique
   const steps = [

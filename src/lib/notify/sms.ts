@@ -1,10 +1,22 @@
+import 'server-only';
+
 /**
  * Service SMS centralisé via Brevo (utilisé par OTP et dispatch livreur)
  */
 
 import { privateEnv } from '../env';
 
+/** Vrai tant que le compte Brevo n'a pas l'option SMS. Jamais actif en production. */
+export function smsIsMocked(): boolean {
+  return process.env.NODE_ENV !== 'production';
+}
+
 export async function sendSmsViaBrevo(phone: string, message: string): Promise<void> {
+  if (smsIsMocked()) {
+    console.info(`[sms:mock] ${phone}\n${message}`);
+    return;
+  }
+
   const apiKey = privateEnv.BREVO_API_KEY;
   const sender = privateEnv.BREVO_SMS_SENDER;
 

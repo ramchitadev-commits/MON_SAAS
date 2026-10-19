@@ -4,9 +4,9 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { ShoppingCart, ShoppingBag, Search, X } from 'lucide-react';
-import { getShopSettings, ShopSettings } from '@/lib/settings';
+import { getShopSettings } from '@/lib/settings';
 import { getProductsByShopSlug } from '@/lib/products';
-import { Product } from '@/types';
+import { Product, ShopSettings } from '@/types';
 import { getCart, getCartCount, getCartTotal, CartItem } from '@/lib/cart';
 
 export default function StorefrontPage() {
@@ -40,41 +40,7 @@ export default function StorefrontPage() {
       .then(setProducts)
       .catch((err) => {
         console.error('Erreur getProductsByShopSlug:', err);
-        setProducts([
-          {
-            id: 'demo-1',
-            name: 'Robe Dashiki Premium',
-            description: 'Robe traditionnelle élégante en coton biologique',
-            price: 45000,
-            image: 'https://images.unsplash.com/photo-1595777707802-21b287da9d7f?w=500&h=500&fit=crop',
-            isAvailable: true,
-            stock: 2,
-            shopId: slug,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'demo-2',
-            name: 'Sac à main Tissu Wax',
-            description: 'Accessoire élégant aux motifs traditionnels',
-            price: 28000,
-            image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=500&h=500&fit=crop',
-            isAvailable: true,
-            stock: 5,
-            shopId: slug,
-            createdAt: new Date().toISOString(),
-          },
-          {
-            id: 'demo-3',
-            name: 'Collier Perles Artisanal',
-            description: 'Bijou unique fait à la main par des artisans sénégalais',
-            price: 15000,
-            image: 'https://images.unsplash.com/photo-1599643478518-a784e5dc4c8f?w=500&h=500&fit=crop',
-            isAvailable: true,
-            stock: null,
-            shopId: slug,
-            createdAt: new Date().toISOString(),
-          },
-        ]);
+        setProducts([]);
       })
       .finally(() => setLoading(false));
 

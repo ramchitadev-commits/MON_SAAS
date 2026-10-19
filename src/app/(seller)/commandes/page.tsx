@@ -26,7 +26,7 @@ export default function CommandesPage() {
     const load = () => getOrders().then(setOrders).catch((err) => console.error(err));
     load();
     // Rafraîchit
-    const interval = setInterval(load, 2000);
+    const interval = setInterval(load, 30000);
     return () => clearInterval(interval);
   }, []);
 

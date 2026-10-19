@@ -19,10 +19,9 @@ import {
   Truck,
   ChevronDown,
 } from 'lucide-react';
-import { getShopSettings, ShopSettings } from '@/lib/settings';
+import { getShopSettings } from '@/lib/settings';
 import { getOrders } from '@/lib/orders';
-import { isAuthenticated } from '@/lib/auth';
-import { Order } from '@/types';
+import { Order, ShopSettings } from '@/types';
 
 type PeriodFilter = 'today' | 'month' | 'quarter' | 'year';
 
@@ -40,13 +39,6 @@ export default function AccueilPage() {
   const [mounted, setMounted] = useState(false);
   const [period, setPeriod] = useState<PeriodFilter>('today');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
-
-  // Vérifie l'authentification au chargement
-  useEffect(() => {
-    if (mounted && !isAuthenticated()) {
-      router.replace('/entrer');
-    }
-  }, [mounted, router]);
 
   const periodConfigs: Record<PeriodFilter, PeriodConfig> = {
     today: {
@@ -110,7 +102,7 @@ export default function AccueilPage() {
     const interval = setInterval(() => {
       loadOrders();
       loadSettings();
-    }, 2000);
+    }, 30000);
     return () => clearInterval(interval);
   }, [mounted, router]);
 
@@ -138,7 +130,7 @@ export default function AccueilPage() {
   };
 
   // Slug dynamique pour la boutique
-  const shopSlug = settings ? settings.name.toLowerCase().replace(/[^a-z0-9]+/g, '-') : 'boutique';
+  const shopSlug = settings?.slug || 'boutique';
   const shopUrl =
     mounted && typeof window !== 'undefined'
       ? `${window.location.origin}/${shopSlug}`

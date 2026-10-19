@@ -1,11 +1,14 @@
+'use server';
+
 import { z } from 'zod';
-import { supabase } from './supabase';
 import { Courier } from '@/types';
+import { adminDb } from './server/db';
+import { requireShopId } from './server/access';
+import { checkCourierLimit } from './subscriptions';
 
 const TABLE = 'couriers';
 
-// --- Validation Zod (règle AGENTS.md) ---
-export const courierInputSchema = z.object({
+const courierInputSchema = z.object({
   name: z.string().trim().min(1, 'Le nom du livreur est obligatoire.'),
   phone: z.string().trim().min(1, 'Le téléphone du livreur est obligatoire.'),
   channel: z.enum(['sms', 'whatsapp']),
@@ -14,68 +17,98 @@ export const courierInputSchema = z.object({
 
 export type CourierInput = z.infer<typeof courierInputSchema>;
 
-// Retire le statut « par défaut » de tous les livreurs (sauf un éventuel exclu).
-async function clearDefault(exceptId?: string): Promise<void> {
-  let query = supabase.from(TABLE).update({ isDefault: false }).eq('isDefault', true);
+async function clearDefault(shopId: string, exceptId?: string): Promise<void> {
+  let query = adminDb().from(TABLE).update({ isDefault: false }).eq('shopId', shopId).eq('isDefault', true);
   if (exceptId) query = query.neq('id', exceptId);
   const { error } = await query;
-  if (error) throw new Error(`Mise à jour du livreur par défaut échouée : ${error.message}`);
+  if (error) {
+    console.error('[couriers] défaut', error.message);
+    throw new Error('Mise à jour du livreur par défaut échouée.');
+  }
 }
 
 export async function getCouriers(): Promise<Courier[]> {
-  const { data, error } = await supabase
+  const shopId = await requireShopId();
+  const { data, error } = await adminDb()
     .from(TABLE)
     .select('*')
+    .eq('shopId', shopId)
     .order('createdAt', { ascending: true });
 
-  if (error) throw new Error(`Chargement des livreurs impossible : ${error.message}`);
+  if (error) {
+    console.error('[couriers] lecture', error.message);
+    throw new Error('Chargement des livreurs impossible.');
+  }
   return (data ?? []) as Courier[];
 }
 
 export async function createCourier(input: CourierInput): Promise<Courier> {
   const parsed = courierInputSchema.parse(input);
+  const shopId = await requireShopId();
+  await checkCourierLimit(shopId);
 
-  // Le tout premier livreur devient automatiquement le livreur par défaut.
   let makeDefault = parsed.isDefault;
   if (!makeDefault) {
-    const { count } = await supabase.from(TABLE).select('id', { count: 'exact', head: true });
+    const { count } = await adminDb()
+      .from(TABLE)
+      .select('id', { count: 'exact', head: true })
+      .eq('shopId', shopId);
     makeDefault = (count ?? 0) === 0;
   }
-  if (makeDefault) await clearDefault();
+  if (makeDefault) await clearDefault(shopId);
 
-  const { data, error } = await supabase
+  const { data, error } = await adminDb()
     .from(TABLE)
-    .insert({ ...parsed, isDefault: makeDefault })
+    .insert({ ...parsed, isDefault: makeDefault, shopId })
     .select()
     .single();
 
-  if (error) throw new Error(`Création du livreur échouée : ${error.message}`);
+  if (error) {
+    console.error('[couriers] création', error.message);
+    throw new Error('Création du livreur échouée.');
+  }
   return data as Courier;
 }
 
 export async function saveCourier(courier: Courier): Promise<Courier> {
   const parsed = courierInputSchema.parse(courier);
-  if (parsed.isDefault) await clearDefault(courier.id);
+  const shopId = await requireShopId();
+  if (parsed.isDefault) await clearDefault(shopId, courier.id);
 
-  const { data, error } = await supabase
+  const { data, error } = await adminDb()
     .from(TABLE)
     .update(parsed)
     .eq('id', courier.id)
+    .eq('shopId', shopId)
     .select()
     .single();
 
-  if (error) throw new Error(`Mise à jour du livreur échouée : ${error.message}`);
+  if (error) {
+    console.error('[couriers] mise à jour', error.message);
+    throw new Error('Mise à jour du livreur échouée.');
+  }
   return data as Courier;
 }
 
-// Définit un livreur comme « par défaut » et retire ce statut aux autres.
 export async function setDefaultCourier(id: string): Promise<void> {
-  await clearDefault(id);
-  const { error } = await supabase.from(TABLE).update({ isDefault: true }).eq('id', id);
-  if (error) throw new Error(`Définition du livreur par défaut échouée : ${error.message}`);
+  const shopId = await requireShopId();
+  await clearDefault(shopId, id);
+  const { error } = await adminDb()
+    .from(TABLE)
+    .update({ isDefault: true })
+    .eq('id', id)
+    .eq('shopId', shopId);
+  if (error) {
+    console.error('[couriers] défaut', error.message);
+    throw new Error('Définition du livreur par défaut échouée.');
+  }
 }
 
 export async function deleteCourier(id: string): Promise<void> {
-  const { error } = await supabase.from(TABLE).delete().eq('id', id);
-  if (error) throw new Error(`Suppression du livreur échouée : ${error.message}`);
+  const shopId = await requireShopId();
+  const { error } = await adminDb().from(TABLE).delete().eq('id', id).eq('shopId', shopId);
+  if (error) {
+    console.error('[couriers] suppression', error.message);
+    throw new Error('Suppression du livreur échouée.');
+  }
 }

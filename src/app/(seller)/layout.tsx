@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, ClipboardList, Tag, Truck, Settings, LogIn } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { clearAuthSession, isAuthenticated } from '@/lib/auth';
+import { logout } from '@/lib/auth';
 import { countActiveOrders } from '@/lib/orders';
 import { getShopSettings } from '@/lib/settings';
 
@@ -13,56 +13,44 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
   const pathname = usePathname();
   const router = useRouter();
   const [badgeCount, setBadgeCount] = useState(0);
-  const [storeName, setStoreName] = useState('Boutique de Fatou');
-  const [mounted, setMounted] = useState(false);
+  const [storeName, setStoreName] = useState('Ma boutique');
+  const [shopSlug, setShopSlug] = useState<string | null>(null);
 
-  // Vérifie l'authentification et initialise
-  useEffect(() => {
-    setMounted(true);
-
-    // Si pas authentifié et qu'on n'est pas sur une page d'auth, rediriger
-    const isAuthRoute = pathname.startsWith('/entrer') || pathname.startsWith('/onboarding');
-    if (!isAuthRoute && !isAuthenticated()) {
-      router.replace('/entrer');
-      return;
-    }
-  }, [pathname, router]);
+  const isAuthRoute = pathname.startsWith('/entrer') || pathname.startsWith('/onboarding');
 
   useEffect(() => {
-    if (!mounted) return;
+    if (isAuthRoute) return;
 
-    updateBadge();
-    const loadStoreName = async () => {
+    const loadStore = async () => {
       try {
         const s = await getShopSettings();
         setStoreName(s.name);
+        setShopSlug(s.slug ?? null);
       } catch (err) {
         console.error('Erreur chargement boutique:', err);
-        // Utilise le nom par défaut en cas d'erreur
-        setStoreName('Boutique de Fatou');
       }
     };
-    loadStoreName();
 
-    // Ecoute les changements de statut des commandes
+    const updateBadge = () => {
+      countActiveOrders()
+        .then(setBadgeCount)
+        .catch((err) => {
+          console.error('Erreur comptage commandes:', err);
+          setBadgeCount(0);
+        });
+    };
+
+    loadStore();
+    updateBadge();
     const interval = setInterval(() => {
       updateBadge();
-      loadStoreName();
-    }, 2000);
+      loadStore();
+    }, 30000);
     return () => clearInterval(interval);
-  }, [mounted]);
+  }, [isAuthRoute, pathname]);
 
-  const updateBadge = () => {
-    countActiveOrders()
-      .then(setBadgeCount)
-      .catch((err) => {
-        console.error('Erreur comptage commandes:', err);
-        setBadgeCount(0); // Utilise 0 en cas d'erreur
-      });
-  };
-
-  const handleLogout = () => {
-    clearAuthSession();
+  const handleLogout = async () => {
+    await logout();
     router.replace('/entrer');
   };
 
@@ -74,8 +62,6 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
     { label: 'Boutique', href: '/boutique', icon: Settings },
   ];
 
-  // Écrans d'authentification / onboarding : plein écran, sans la navigation du dashboard.
-  const isAuthRoute = pathname.startsWith('/entrer') || pathname.startsWith('/onboarding');
   if (isAuthRoute) {
     return <>{children}</>;
   }
@@ -91,11 +77,11 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
           <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Boutique Active</div>
           <div className="text-sm font-bold text-slate-700 mt-1 truncate">{storeName}</div>
-          <Link 
-            href="/accueil" 
+          <Link
+            href={shopSlug ? `/${shopSlug}` : '/boutique'}
             className="text-xs text-emerald-600 font-medium hover:underline mt-1 inline-block"
           >
-            doole.sn/fatou-boutique
+            {shopSlug ? `/${shopSlug}` : 'Lien de la boutique'}
           </Link>
         </div>
 
@@ -153,7 +139,7 @@ export default function SellerLayout({ children }: { children: React.ReactNode }
             </button>
             <div className="text-right">
               <div className="text-xs font-bold text-slate-800 line-clamp-1">{storeName}</div>
-              <div className="text-[10px] text-emerald-600">doole.sn/fatou</div>
+              <div className="text-[10px] text-emerald-600">{shopSlug ? `/${shopSlug}` : ''}</div>
             </div>
           </div>
         </header>

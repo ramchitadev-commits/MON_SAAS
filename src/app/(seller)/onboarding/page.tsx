@@ -12,7 +12,8 @@ import {
   Check,
 } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
-import { getShopSettings, saveShopSettings, ShopSettings } from '@/lib/settings';
+import { getShopSettings, saveShopSettings } from '@/lib/settings';
+import { ShopSettings } from '@/types';
 
 // Transforme un nom de boutique en slug d'URL (sans accents ni caractères spéciaux).
 const slugify = (value: string): string =>
@@ -48,6 +49,10 @@ export default function OnboardingPage() {
     setPayoutPhone(e.target.value.replace(/\D/g, '').slice(0, 9));
     if (error) setError('');
   };
+
+  const formattedPhone = payoutPhone.replace(/(\d{2})(\d{3})?(\d{2})?(\d{2})?/, (_m, a, b, c, d) =>
+    [a, b, c, d].filter(Boolean).join(' ')
+  );
 
 
   // Sauvegarde la boutique + le produit éventuel, puis marque l'onboarding terminé.
@@ -298,17 +303,18 @@ export default function OnboardingPage() {
                   Numéro de réception
                 </label>
                 <div className="relative">
-                  <span className="absolute inset-y-0 left-0 flex items-center pl-4 pr-3.5 my-3 h-6 font-bold text-slate-400 text-sm select-none border-r-2 border-slate-900">
+                  <span className="pointer-events-none absolute inset-y-0 left-0 z-10 flex items-center pl-4 pr-3.5 my-3 h-6 font-bold text-slate-400 text-sm select-none border-r-2 border-slate-900">
                     +221
                   </span>
                   <input
                     id="payout"
                     type="tel"
                     inputMode="numeric"
-                    value={payoutPhone}
+                    autoComplete="tel"
+                    value={formattedPhone}
                     onChange={handlePhoneChange}
                     placeholder="77 123 45 67"
-                    className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
+                    className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium tracking-wide text-slate-900 placeholder:text-slate-400 caret-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${error ? 'border-rose-500' : 'border-slate-900'
                       }`}
                   />
                 </div>

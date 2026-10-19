@@ -213,7 +213,7 @@ export default function LandingPage() {
             <div className="bg-white border-2 border-slate-900 rounded-2xl shadow-[6px_6px_0px_0px_rgba(0,0,0,1)] overflow-hidden max-w-sm mx-auto">
               <div className="bg-slate-900 text-white px-5 py-3 flex items-center justify-between">
                 <span className="font-black tracking-tight">doolé</span>
-                <span className="text-xs text-slate-300">Boutique de Fatou</span>
+                <span className="text-xs text-slate-300">Boutique exemple</span>
               </div>
               <div className="p-5 space-y-4">
                 <div className="flex items-center gap-3">

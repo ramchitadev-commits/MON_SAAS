@@ -1,175 +1,172 @@
-import { z } from 'zod';
-import { supabase } from './supabase';
-import { Order, OrderStatus, Courier } from '@/types';
+'use server';
+
+import { Order, OrderStatus } from '@/types';
+import { adminDb } from './server/db';
+import { requireShopId, shopBySlug } from './server/access';
+import { releaseAbandonedOrders } from './server/abandoned';
+import { releaseStock } from './server/inventory';
 
 const ORDERS = 'orders';
-const ITEMS = 'order_items';
-// Embarque les lignes de commande sous la clé `items` (relation order_items.orderId -> orders.id).
 const SELECT_WITH_ITEMS = '*, items:order_items(*)';
 
-// --- Validation Zod (règle AGENTS.md) ---
-export const orderItemInputSchema = z.object({
-  productId: z.string().nullable().optional(),
-  name: z.string().trim().min(1),
-  unitPrice: z.number().int().min(0),
-  quantity: z.number().int().min(1),
-});
+const SELLER_STATUSES: OrderStatus[] = ['a_envoyer', 'en_route', 'livre', 'annulee'];
 
-export const orderInputSchema = z.object({
-  customerName: z.string().trim().min(1, 'Le nom du client est obligatoire.'),
-  customerPhone: z.string().trim().min(1, 'Le téléphone du client est obligatoire.'),
-  deliveryZone: z.string().trim().min(1, 'La zone de livraison est obligatoire.'),
-  deliveryAddress: z.string().trim().min(1, "L'adresse de livraison est obligatoire."),
-  deliveryNote: z.string().nullable().optional(),
-  gpsLocation: z.string().nullable().optional(),
-  deliveryDate: z.string().nullable().optional(),
-  subtotal: z.number().int().min(0),
-  deliveryFee: z.number().int().min(0),
-  total: z.number().int().min(0),
-  status: z.enum(['en_attente', 'payee', 'a_envoyer', 'en_route', 'livre', 'annulee']).default('en_attente'),
-  paymentProvider: z.enum(['wave', 'orange_money']),
-  paymentRef: z.string().nullable().optional(),
-  trackingToken: z.string().trim().min(1),
-  paidAt: z.string().nullable().optional(),
-  items: z.array(orderItemInputSchema).min(1, 'La commande doit contenir au moins un article.'),
-});
-
-export type OrderInput = z.infer<typeof orderInputSchema>;
-
-// --- Lecture ---
-export async function getOrders(): Promise<Order[]> {
-  const { data, error } = await supabase
-    .from(ORDERS)
-    .select(SELECT_WITH_ITEMS)
-    .order('createdAt', { ascending: false });
-
-  if (error) throw new Error(`Chargement des commandes impossible : ${error.message}`);
-  return (data ?? []) as unknown as Order[];
-}
-
-export async function getOrderById(id: string): Promise<Order | null> {
-  const { data, error } = await supabase
+async function loadSellerOrder(id: string, shopId: string): Promise<Order | null> {
+  const { data, error } = await adminDb()
     .from(ORDERS)
     .select(SELECT_WITH_ITEMS)
     .eq('id', id)
+    .eq('shopId', shopId)
     .maybeSingle();
 
-  if (error) throw new Error(`Commande introuvable : ${error.message}`);
-  return (data as unknown as Order) ?? null;
+  if (error) {
+    console.error('[orders] lecture', error.message);
+    throw new Error('Commande introuvable.');
+  }
+  return (data as Order | null) ?? null;
+}
+
+export async function getOrders(): Promise<Order[]> {
+  const shopId = await requireShopId();
+  await releaseAbandonedOrders(shopId);
+  const { data, error } = await adminDb()
+    .from(ORDERS)
+    .select(SELECT_WITH_ITEMS)
+    .eq('shopId', shopId)
+    .order('createdAt', { ascending: false });
+
+  if (error) {
+    console.error('[orders] liste', error.message);
+    throw new Error('Chargement des commandes impossible.');
+  }
+  return (data ?? []) as Order[];
+}
+
+export async function getOrderById(id: string): Promise<Order | null> {
+  const shopId = await requireShopId();
+  return loadSellerOrder(id, shopId);
+}
+
+export async function getPublicOrder(orderId: string, slug: string): Promise<Order | null> {
+  const shop = await shopBySlug(slug);
+  if (!shop) return null;
+
+  const { data, error } = await adminDb()
+    .from(ORDERS)
+    .select(SELECT_WITH_ITEMS)
+    .eq('id', orderId)
+    .eq('shopId', shop.id)
+    .maybeSingle();
+
+  if (error) {
+    console.error('[orders] confirmation', error.message);
+    throw new Error('Commande introuvable.');
+  }
+  return (data as Order | null) ?? null;
 }
 
 export async function getOrderByToken(token: string): Promise<Order | null> {
-  const { data, error } = await supabase
+  const view = await getTrackingOrder(token);
+  return view?.order ?? null;
+}
+
+export async function getTrackingOrder(
+  token: string
+): Promise<{ order: Order; courier: { name: string; phone: string } | null } | null> {
+  const { data, error } = await adminDb()
     .from(ORDERS)
     .select(SELECT_WITH_ITEMS)
     .eq('trackingToken', token)
     .maybeSingle();
 
-  if (error) throw new Error(`Suivi de commande introuvable : ${error.message}`);
-  return (data as unknown as Order) ?? null;
+  if (error) {
+    console.error('[orders] suivi', error.message);
+    throw new Error('Suivi de commande introuvable.');
+  }
+  if (!data) return null;
+
+  const order = data as Order;
+  if (!order.courierId) return { order, courier: null };
+
+  const { data: courier } = await adminDb()
+    .from('couriers')
+    .select('name, phone')
+    .eq('id', order.courierId)
+    .maybeSingle();
+
+  return {
+    order,
+    courier: courier ? { name: courier.name as string, phone: courier.phone as string } : null,
+  };
 }
 
-// Compte les commandes « à traiter » (pour le badge de navigation) sans charger les données.
 export async function countActiveOrders(): Promise<number> {
-  const { count, error } = await supabase
+  const shopId = await requireShopId();
+  const { count, error } = await adminDb()
     .from(ORDERS)
     .select('id', { count: 'exact', head: true })
+    .eq('shopId', shopId)
     .in('status', ['payee', 'en_attente']);
 
-  if (error) throw new Error(`Comptage des commandes impossible : ${error.message}`);
+  if (error) {
+    console.error('[orders] compteur', error.message);
+    throw new Error('Comptage des commandes impossible.');
+  }
   return count ?? 0;
 }
 
-// --- Création : insère la commande puis ses articles (rollback best-effort si échec) ---
-export async function createOrder(input: OrderInput): Promise<Order> {
-  const parsed = orderInputSchema.parse(input);
-  const { items, ...orderFields } = parsed;
-
-  // Filtre les champs null/undefined pour éviter les erreurs Supabase
-  const fieldsToInsert = Object.fromEntries(
-    Object.entries(orderFields).filter(([, value]) => value !== null && value !== undefined)
-  );
-
-  const { data: orderRow, error: orderError } = await supabase
-    .from(ORDERS)
-    .insert(fieldsToInsert)
-    .select()
-    .single();
-
-  if (orderError) {
-    const errorDetail = orderError.details || orderError.message || 'Erreur inconnue';
-    const fullErrorMsg = `Création de la commande échouée : ${errorDetail}. Champs: ${JSON.stringify(fieldsToInsert)}`;
-    console.error('[SUPABASE_INSERT_ERROR]', fullErrorMsg);
-    throw new Error(fullErrorMsg);
-  }
-
-  const itemsToInsert = items.map((it) => ({ ...it, orderId: orderRow.id }));
-  const { error: itemsError } = await supabase.from(ITEMS).insert(itemsToInsert);
-
-  if (itemsError) {
-    // La commande a été créée sans ses articles : on la supprime pour ne pas laisser d'orphelin.
-    const deleteError = await supabase.from(ORDERS).delete().eq('id', orderRow.id);
-    const itemsErrorDetail = itemsError.details || itemsError.message || 'Erreur inconnue';
-    const fullErrorMsg = `Enregistrement des articles échoué : ${itemsErrorDetail}. Commande ${orderRow.id} supprimée.`;
-    console.error('[SUPABASE_ITEMS_ERROR]', fullErrorMsg);
-    throw new Error(fullErrorMsg);
-  }
-
-  const created = await getOrderById(orderRow.id);
-  if (!created) throw new Error('Commande créée mais introuvable après insertion.');
-  return created;
-}
-
-// --- Mise à jour des champs logistiques (statut, livreur, dates) ---
 export async function updateOrder(order: Order): Promise<Order> {
-  const patch: {
-    status: OrderStatus;
-    courierId: string | null;
-    dispatchedAt: string | null;
-    paidAt: string | null;
-  } = {
-    status: order.status,
-    courierId: order.courierId ?? null,
-    dispatchedAt: order.dispatchedAt ?? null,
-    paidAt: order.paidAt ?? null,
-  };
+  const shopId = await requireShopId();
+  const existing = await loadSellerOrder(order.id, shopId);
+  if (!existing) throw new Error('Commande introuvable.');
 
-  const { error } = await supabase
-    .from(ORDERS)
-    .update(patch)
-    .eq('id', order.id);
-
-  if (error) throw new Error(`Mise à jour de la commande échouée : ${error.message}`);
-
-  // Recharge la commande complète avec ses items
-  const updated = await getOrderById(order.id);
-  if (!updated) throw new Error('Commande mise à jour mais introuvable après');
-  return updated;
-}
-
-// --- Dispatch automatique : attribue une commande au premier livreur disponible ---
-export async function autoDispatchOrder(orderId: string, couriers: Courier[]): Promise<Order | null> {
-  if (couriers.length === 0) return null;
-
-  // Charge la commande existante
-  const order = await getOrderById(orderId);
-  if (!order) return null;
-
-  // Sélectionne le premier livreur (dispatch équitable)
-  const assignedCourier = couriers[0];
-
-  const updatedOrder: Order = {
-    ...order,
-    courierId: assignedCourier.id,
-    dispatchedAt: new Date().toISOString(),
-    // Note: on ne change pas le statut ici, il reste 'payee' jusqu'à
-    // ce que le livreur confirme qu'il a accepté la commande
-  };
-
-  try {
-    return await updateOrder(updatedOrder);
-  } catch (err) {
-    console.error(`Auto-dispatch échoué pour la commande ${orderId}:`, err);
-    return null;
+  if (order.status !== existing.status && !SELLER_STATUSES.includes(order.status)) {
+    throw new Error('Ce changement de statut n’est pas autorisé.');
   }
+  if (existing.status === 'en_attente' && order.status !== existing.status && order.status !== 'annulee') {
+    throw new Error('La commande doit être payée avant expédition.');
+  }
+
+  let courierId = order.courierId ?? null;
+  if (courierId) {
+    const { data: courier, error } = await adminDb()
+      .from('couriers')
+      .select('id')
+      .eq('id', courierId)
+      .eq('shopId', shopId)
+      .maybeSingle();
+    if (error || !courier) throw new Error('Livreur introuvable pour cette boutique.');
+  } else {
+    courierId = null;
+  }
+
+  const nextStatus = order.status;
+  const { error } = await adminDb()
+    .from(ORDERS)
+    .update({
+      status: nextStatus,
+      courierId,
+      dispatchedAt:
+        nextStatus === 'en_route'
+          ? existing.dispatchedAt ?? new Date().toISOString()
+          : existing.dispatchedAt ?? null,
+    })
+    .eq('id', existing.id)
+    .eq('shopId', shopId);
+
+  if (error) {
+    console.error('[orders] mise à jour', error.message);
+    throw new Error('Mise à jour de la commande échouée.');
+  }
+
+  if (nextStatus === 'annulee' && existing.status !== 'annulee') {
+    const items = (existing.items ?? [])
+      .filter((item) => item.productId)
+      .map((item) => ({ productId: item.productId as string, quantity: item.quantity }));
+    await releaseStock(items);
+  }
+
+  const updated = await loadSellerOrder(existing.id, shopId);
+  if (!updated) throw new Error('Commande introuvable après mise à jour.');
+  return updated;
 }

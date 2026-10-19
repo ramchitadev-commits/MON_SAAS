@@ -4,6 +4,8 @@ export interface CreatePaymentParams {
   orderId: string;
   amount: number;
   customerPhone: string;
+  customerName: string;
+  customerEmail?: string;
   method: PaymentMethod;
   returnUrl: string;
 }

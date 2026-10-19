@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Phone, ArrowRight, ShieldCheck } from 'lucide-react';
+import { Phone, ArrowRight, ShieldCheck, ArrowLeft } from 'lucide-react';
 import { DooleLogo } from '@/components/logos';
 import { sendOtp } from '@/lib/otp';
 
@@ -34,8 +35,10 @@ export default function EntrerPage() {
     setLoading(true);
     const fullPhone = `+221${phone}`;
     try {
-      await sendOtp(fullPhone);
+      const result = await sendOtp(fullPhone);
       sessionStorage.setItem('doole_pending_phone', fullPhone);
+      if (result.devCode) sessionStorage.setItem('doole_dev_code', result.devCode);
+      else sessionStorage.removeItem('doole_dev_code');
       router.push('/entrer/code');
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur lors de l'envoi du code.");
@@ -46,8 +49,17 @@ export default function EntrerPage() {
   return (
     <div className="min-h-screen bg-[#FCFCFB] flex flex-col">
       {/* En-tête simple */}
-      <header className="p-5 flex justify-center md:justify-start">
-        <DooleLogo />
+      <header className="p-5 flex items-center justify-between">
+        <Link href="/" aria-label="Retour à l'accueil">
+          <DooleLogo />
+        </Link>
+        <Link
+          href="/"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-slate-600 hover:text-slate-900 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Accueil
+        </Link>
       </header>
 
       {/* Contenu centré */}
@@ -83,7 +95,7 @@ export default function EntrerPage() {
                   value={formatted}
                   onChange={handlePhoneChange}
                   placeholder="77 123 45 67"
-                  className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium tracking-wide focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
+                  className={`w-full h-14 pl-[85px] pr-4 bg-white border-2 rounded-xl text-base font-medium tracking-wide text-slate-900 placeholder:text-slate-400 caret-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition-all ${
                     error ? 'border-rose-500' : 'border-slate-900'
                   }`}
                 />

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, CreditCard, ShieldCheck } from 'lucide-react';
 import { getCart, getCartTotal, clearCart, CartItem } from '@/lib/cart';
-import { createOrderWithAutoDispatch } from '@/lib/actions';
+import { createOrderAndInitiatePayment } from '@/lib/actions';
 import { WaveLogo, OrangeMoneyLogo } from '@/components/logos';
 import { BUTTON_WAVE, BUTTON_ORANGE_MONEY } from '@/lib/designTokens';
 
@@ -82,30 +82,12 @@ export default function PaymentPage() {
 
     (async () => {
       try {
-        const subtotal = getCartTotal(cartItems);
-        const deliveryFee = deliveryInfo.fee;
-        const total = subtotal + deliveryFee;
-        const trackingToken = `token${Math.floor(100000 + Math.random() * 900000)}`;
-
-        const items = cartItems.map((item) => ({
-          productId: item.productId,
-          name: item.name,
-          unitPrice: item.price,
-          quantity: item.quantity,
-        }));
-
-        // Détermine la date de livraison (demain si après 18h00, sinon la date fournie)
         const finalDeliveryDate = getDeliveryDateForOrder(deliveryInfo.deliveryDate);
-
-        // Importe la Server Action (doit être dynamique pour éviter les erreurs au build)
-        const { createOrderAndInitiatePayment } = await import('@/lib/actions');
-
-        // Crée la commande + lance le paiement Moneroo
-        // Format du téléphone: +221 + 9 chiffres (pas d'espaces)
-        const cleanPhone = deliveryInfo.phone.replace(/\s/g, ''); // Enlève tous les espaces
-        const formattedPhone = `+221${cleanPhone}`;
+        const cleanPhone = deliveryInfo.phone.replace(/\s/g, '');
+        const formattedPhone = cleanPhone.startsWith('+221') ? cleanPhone : `+221${cleanPhone}`;
 
         const { checkoutUrl } = await createOrderAndInitiatePayment({
+          shopSlug: slug,
           customerName: deliveryInfo.name,
           customerPhone: formattedPhone,
           deliveryZone: deliveryInfo.zone,
@@ -113,12 +95,11 @@ export default function PaymentPage() {
           deliveryNote: deliveryInfo.note || null,
           gpsLocation: deliveryInfo.gpsLocation || null,
           deliveryDate: finalDeliveryDate,
-          subtotal,
-          deliveryFee,
-          total,
-          trackingToken,
           paymentProvider: provider,
-          items,
+          items: cartItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          })),
         });
 
         // Vide le panier de cette boutique
